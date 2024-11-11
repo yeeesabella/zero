@@ -80,7 +80,6 @@ if st.button("Generate Cashflow Summary"):
     adj_other_expenses = [other_expenses * ((1 + inflation_rate) ** i) for i in range(years)]
     net_inflow = [a - b for a, b in zip(total_inflow, total_outflow)]
 
-
     # Create a DataFrame to display the results
     data = {'Age': ages, 'Total Inflow': total_inflow,
             'Living Expenses': adj_living_expenses,
@@ -91,7 +90,7 @@ if st.button("Generate Cashflow Summary"):
             'Total Outflow': total_outflow,
             'Net Inflow': net_inflow}
     df = pd.DataFrame(data)
-    
+    df = df.set_index("Age")
     # Display the table
     st.write("Projected Cash flows (with assumptions)")
     st.dataframe(df.style.format({"Total Inflow": "${:,.2f}",
@@ -131,11 +130,11 @@ with col10:
     current_cpf_oa = st.number_input("CPF OA", min_value=0,value=70000)
     current_cpf_ma = st.number_input("CPF MA", min_value=0,value=70000)
 
-long_term_rate = 0.08
-short_term_rate = 0.02
-cpf_oa_rate = 0.025
-cpf_sa_rate = 0.04
-cpf_ma_rate = 0.04
+long_term_rate = 1.08
+short_term_rate = 1.02
+cpf_oa_rate = 1.025
+cpf_sa_rate = 1.04
+cpf_ma_rate = 1.04
 
 # Button to generate the table
 if st.button("Generate Portfolio Summary"):
@@ -143,51 +142,124 @@ if st.button("Generate Portfolio Summary"):
     years = future_age - current_age + 1
     ages = list(range(current_age, future_age + 1))
     
-    # Calculate portfolio value adjusted for growth each year
-    adj_cash = [current_cash * ((1 + short_term_rate) ** i) for i in range(years)]
-    adj_cash_eq = [current_equities_in_cash * ((1 + long_term_rate) ** i) for i in range(years)]
-    adj_srs_eq = [current_equities_in_srs * ((1 + long_term_rate) ** i) for i in range(years)]
-    adj_oa = [current_cpf_oa * ((1 + cpf_oa_rate) ** i) for i in range(years)]
-    adj_sa = [current_cpf_sa * ((1 + cpf_sa_rate) ** i) for i in range(years)]
-    adj_ma = [current_cpf_ma * ((1 + cpf_ma_rate) ** i) for i in range(years)]
-    adj_total = [a+b+c+d+e+f for a,b,c,d,e,f in zip(adj_cash,adj_cash_eq,adj_srs_eq,adj_oa,adj_sa,adj_ma)]
+    contribute_cpf_oa_emp = []
+    contribute_cpf_sa_emp = []
+    contribute_cpf_ma_emp = []
+    contribute_cpf_sa_top_up = []
+    contribute_srs_top_up = []
+    contribute_st_inv = []
+    contribute_lt_inv = []
 
-    # Calculate planned contributions each year
-    add_cpf_sa_top_up = [cpf_sa_top_up if current_age <= i+current_age <= 35 else 0 for i in range(years)] # hardcode to 35 for now
-    add_srs = [srs_top_up if current_age <= i+current_age <= fire_age else 0 for i in range(years)] # until stop working
-    add_cpf_oa = [1564 if current_age <= i+current_age <= fire_age else 0 for i in range(years)] # hardcode for now
-    add_cpf_sa = [408 if current_age <= i+current_age <= fire_age else 0 for i in range(years)] # hardcode for now
-    add_cpf_ma = [544 if current_age <= i+current_age <= fire_age else 0 for i in range(years)] # hardcode for now
-    add_long_term_cash = [long_term_inv if current_age <= i+current_age <= fire_age else 0 for i in range(years)] # remaining after expenses
-    add_short_term_cash = [short_term_inv if current_age <= i+current_age <= fire_age else 0 for i in range(years)] # remaining after expenses
+    ending_cash = []
+    ending_equities_cash = []
+    ending_equities_srs = []
+    ending_cpf_oa = []
+    ending_cpf_sa = []
+    ending_cpf_ma = []
+    ending_total = []
 
-    # Calculate ending balances for each year
+    for age in range(current_age, future_age + 1):
+        # generate beginning balances
+        if current_age == age:
+            ages = [current_age]
+            beginning_cash = [current_cash]
+            beginning_equities_cash = [current_equities_in_cash]
+            beginning_equities_srs = [current_equities_in_srs]
+            beginning_cpf_oa = [current_cpf_oa]
+            beginning_cpf_sa = [current_cpf_sa]
+            beginning_cpf_ma = [current_cpf_ma]
+            beginning_total = [current_cash+current_equities_in_cash+current_equities_in_srs+current_cpf_oa+current_cpf_sa+current_cpf_ma]
+            
+        else:
+            ages.append(age)
+            beginning_cash.append(ending_cash[-1])
+            beginning_equities_cash.append(ending_equities_cash[-1])
+            beginning_equities_srs.append(ending_equities_srs[-1])
+            beginning_cpf_oa.append(ending_cpf_oa[-1])
+            beginning_cpf_sa.append(ending_cpf_sa[-1])
+            beginning_cpf_ma.append(ending_cpf_ma[-1])
+            beginning_total.append(ending_total[-1])
+        
+        # generate top up amounts based on age and working years
+        if current_age <= age <= fire_age:
+            cpf_oa_emp = 1564
+            cpf_sa_emp = 408
+            cpf_ma_emp = 544
+            srs_top_up = srs_top_up
+            long_term_inv = long_term_inv
+            short_term_inv = short_term_inv
+        else: 
+            cpf_oa_emp = 0
+            cpf_sa_emp = 0
+            cpf_ma_emp = 0
+            srs_top_up = 0
+            long_term_inv = 0
+            short_term_inv = 0
+        
+        if age <= 35:
+            cpf_sa_top_up = cpf_sa_top_up
+        else: 
+            cpf_sa_top_up = 0
 
+        contribute_cpf_oa_emp.append(cpf_oa_emp)
+        contribute_cpf_sa_emp.append(cpf_sa_emp)
+        contribute_cpf_ma_emp.append(cpf_ma_emp)
+        contribute_srs_top_up.append(srs_top_up)
+        contribute_cpf_sa_top_up.append(cpf_sa_top_up)
+        contribute_st_inv.append(short_term_inv)
+        contribute_lt_inv.append(long_term_inv)
+
+        # Generate ending balances
+        ending_cash.append(beginning_cash[-1]*short_term_rate+contribute_st_inv[-1])
+        ending_equities_cash.append(beginning_equities_cash[-1]*long_term_rate+contribute_lt_inv[-1])
+        ending_equities_srs.append(beginning_equities_srs[-1]*long_term_rate+contribute_srs_top_up[-1])
+        ending_cpf_oa.append(beginning_cpf_oa[-1]*cpf_oa_rate+contribute_cpf_oa_emp[-1])
+        ending_cpf_sa.append(beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1])
+        ending_cpf_ma.append(beginning_cpf_ma[-1]*cpf_ma_rate+contribute_cpf_ma_emp[-1])
+        ending_total.append(ending_cash[-1]+ending_equities_cash[-1]+ending_equities_srs[-1]+ending_cpf_oa[-1]+ending_cpf_sa[-1]+ending_cpf_ma[-1])
+    
     # Create a DataFrame to display the results
     data = {'Age': ages, 
-            'Cash': adj_cash,
-            'Equities in Cash': adj_cash_eq,
-            'Equities in SRS': adj_srs_eq,
-            'CPF OA': adj_oa,
-            'CPF SA': adj_sa,
-            'CPF MA': adj_ma,
-            'Total Portfolio Value': adj_total,
-            'E/E CPF OA': add_cpf_oa,
-            'E/E CPF SA': add_cpf_sa,
-            'E/E CPF MA': add_cpf_ma,
-            'Top up CPF SA': add_cpf_sa_top_up,
-            'Top up SRS': add_srs,
-            'LT Cash Investments ': add_long_term_cash,
-            'ST Cash Investments': add_short_term_cash,
+            'Cash': beginning_cash,
+            'Equities in Cash': beginning_equities_cash,
+            'Equities in SRS': beginning_equities_srs,
+            'CPF OA': beginning_cpf_oa,
+            'CPF SA': beginning_cpf_sa,
+            'CPF MA': beginning_cpf_ma,
+            'Total Portfolio Value': beginning_total,
+            'E/E CPF OA': contribute_cpf_oa_emp,
+            'E/E CPF SA': contribute_cpf_sa_emp,
+            'E/E CPF MA': contribute_cpf_ma_emp,
+            'Top up CPF SA': contribute_cpf_sa_top_up,
+            'Top up SRS': contribute_srs_top_up,
+            'LT Cash Investments ': contribute_lt_inv,
+            'ST Cash Investments': contribute_st_inv,
+            'Ending Cash': ending_cash,
+            'Ending Equities in Cash': ending_equities_cash,
+            'Ending Equities in SRS': ending_equities_srs,
+            'Ending CPF OA': ending_cpf_oa,
+            'Ending CPF SA': ending_cpf_sa,
+            'Ending CPF MA': ending_cpf_ma,
+            'Ending Total Portfolio Value': ending_total,
             }
     df = pd.DataFrame(data)
     columns_with_beginning = pd.MultiIndex.from_product([["Beginning Balances"], df.columns[1:8]])
-    columns_with_contributions = pd.MultiIndex.from_product([["Planned Contributions"], df.columns[8:]])
-    df.columns = pd.MultiIndex.from_tuples([("","Age")] + list(columns_with_beginning)+list(columns_with_contributions))
+    columns_with_contributions = pd.MultiIndex.from_product([["Planned Contributions"], df.columns[8:15]])
+    columns_with_ending = pd.MultiIndex.from_product([["Ending Balances"], df.columns[15:]])
+    df.columns = pd.MultiIndex.from_tuples([("","Age")] + list(columns_with_beginning)+list(columns_with_contributions)+list(columns_with_ending))
     
+    # Remove Ending string from columns
+    fixed_string = "Ending "
+    columns_to_remove = [col for col in df.columns.get_level_values(1) if fixed_string in str(col)]
+    new_column_names = [col.replace(fixed_string, '') if fixed_string in str(col) else col for col in df.columns.get_level_values(1)]
+    new_columns = list(zip(df.columns.get_level_values(0), new_column_names))
+    df.columns = pd.MultiIndex.from_tuples(new_columns)
+
     # Display the table
     st.write("Projected Portfolio value (with assumptions)")
     pd.set_option('display.precision', 0)
     df = df.round(0)
+    df = df.set_index([("","Age")])
+    df.index.name = "Age"
 
-    st.dataframe(df,use_container_width=False)
+    st.dataframe(df)
