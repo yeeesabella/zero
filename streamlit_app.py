@@ -133,7 +133,7 @@ with col10:
     current_cpf_oa = st.number_input("CPF OA", min_value=0,value=70000)
     current_cpf_ma = st.number_input("CPF MA", min_value=0,value=70000)
 
-long_term_rate = 1.08
+long_term_rate = 1.06
 short_term_rate = 1.02
 cpf_oa_rate = 1.025
 cpf_sa_rate = 1.04
@@ -145,13 +145,15 @@ if st.button("Generate Portfolio Summary"):
     contribute_cpf_sa_top_up, contribute_srs_top_up = [], []
     contribute_st_inv, contribute_lt_inv = [], []
 
+    returns_cash, returns_equities_cash, returns_equities_srs = [], [], []
+    returns_cpf_oa, returns_cpf_sa, returns_cpf_ma = [], [], []
+    returns_total = []
+
     ending_cash, ending_equities_cash, ending_equities_srs = [], [], []
     ending_cpf_oa, ending_cpf_sa, ending_cpf_ma = [], [], []
     ending_total = []
 
-    returns_cash, returns_equities_cash, returns_equities_srs = [], [], []
-    returns_cpf_oa, returns_cpf_sa, returns_cpf_ma = [], [], []
-    returns_total = []
+    withdrawals, withdrawn_from, withdrawal_rate = [], [], []
 
     for age in range(current_age, future_age + 1):
         # generate beginning balances
@@ -207,6 +209,29 @@ if st.button("Generate Portfolio Summary"):
         # all goes to lt for now. TODO: customise based on % of remaining
         contribute_lt_inv = [a - b - c if a-b-c>0 else 0 for a, b, c in zip(net_inflow, contribute_srs_top_up, contribute_cpf_sa_top_up)]
         
+        
+        # Generate withdrawals, with sequence
+        if net_inflow[age-30]<0:
+            withdrawals.append(-net_inflow[age-30])
+            # 1. CPF OA after age 55 and sufficient amount
+            if age>=55 and beginning_cpf_oa[age-30]>withdrawals[age-30]:
+                beginning_cpf_oa[age-30] = beginning_cpf_oa[age-30]-withdrawals[age-30]
+                withdrawn_from.append(f'CPF OA')
+            # 2. SRS after age 62
+            elif age>=62 and beginning_equities_srs[age-30]>withdrawals[age-30]:
+                beginning_equities_srs[age-30] = beginning_equities_srs[age-30]-withdrawals[age-30]
+                withdrawn_from.append('SRS')
+            # 3. Cash otherwise
+            elif beginning_equities_cash[age-30]>withdrawals[age-30]:
+                beginning_equities_cash[age-30] = beginning_equities_cash[age-30]-withdrawals[age-30]
+                withdrawn_from.append('Cash Equities')
+            else:
+                withdrawn_from.append('INSUFFICIENT')
+
+        else: 
+            withdrawals.append(0)
+            withdrawn_from.append('-')
+
         # Generate portfolio returns
         returns_cash.append(beginning_cash[-1]*short_term_rate-beginning_cash[-1])
         returns_equities_cash.append(beginning_equities_cash[-1]*long_term_rate-beginning_equities_cash[-1])
@@ -227,6 +252,13 @@ if st.button("Generate Portfolio Summary"):
     
     
     # Create a DataFrame to display the results
+    withdrawal_data = {'Age': ages,
+                        'Withdrawals': withdrawals,
+                        'Withdrawn from': withdrawn_from,
+                        'Withdrawal Rate': [a/b for a, b in zip(withdrawals, ending_total)],
+                       }
+    withdrawal_df = pd.DataFrame(withdrawal_data)
+
     data = {'Age': ages, 
             'Cash': beginning_cash,
             'Equities in Cash': beginning_equities_cash,
@@ -235,6 +267,8 @@ if st.button("Generate Portfolio Summary"):
             'CPF SA': beginning_cpf_sa,
             'CPF MA': beginning_cpf_ma,
             'Total Portfolio Value': beginning_total,
+            'Withdrawals': withdrawals,
+            'Withdrawn from': withdrawn_from,
             'E/E CPF OA': contribute_cpf_oa_emp,
             'E/E CPF SA': contribute_cpf_sa_emp,
             'E/E CPF MA': contribute_cpf_ma_emp,
@@ -260,11 +294,11 @@ if st.button("Generate Portfolio Summary"):
             }
     df = pd.DataFrame(data)
     columns_with_beginning = pd.MultiIndex.from_product([["Beginning Balances"], df.columns[1:8]])
-    columns_with_mandatory = pd.MultiIndex.from_product([["Mandatory Contributions"], df.columns[8:11]])
-    columns_with_contributions = pd.MultiIndex.from_product([["Planned Contributions"], df.columns[11:16]])
-    columns_with_returns = pd.MultiIndex.from_product([["Portfolio Returns"], df.columns[16:23]])
-    columns_with_ending = pd.MultiIndex.from_product([["Ending Balances"], df.columns[23:]])
-    df.columns = pd.MultiIndex.from_tuples([("","Age")] + list(columns_with_beginning)+list(columns_with_mandatory)+list(columns_with_contributions)+list(columns_with_returns)+list(columns_with_ending))
+    columns_with_mandatory = pd.MultiIndex.from_product([["Mandatory Contributions"], df.columns[10:13]])
+    columns_with_contributions = pd.MultiIndex.from_product([["Planned Contributions"], df.columns[13:18]])
+    columns_with_returns = pd.MultiIndex.from_product([["Portfolio Returns"], df.columns[18:25]])
+    columns_with_ending = pd.MultiIndex.from_product([["Ending Balances"], df.columns[25:]])
+    df.columns = pd.MultiIndex.from_tuples([("","Age")] + list(columns_with_beginning)+[("","Withdrawals"),("","Withdrawn from")]+list(columns_with_mandatory)+list(columns_with_contributions)+list(columns_with_returns)+list(columns_with_ending))
     
     # Remove Ending string from columns
     fixed_string = "Ending "
@@ -279,7 +313,7 @@ if st.button("Generate Portfolio Summary"):
     new_column_names = [col.replace(fixed_string, '') if fixed_string in str(col) else col for col in df.columns.get_level_values(1)]
     new_columns = list(zip(df.columns.get_level_values(0), new_column_names))
     df.columns = pd.MultiIndex.from_tuples(new_columns)
-
+    
     # Display the table
     st.write("""
                 Projected Portfolio Value with assumptions:
@@ -288,14 +322,27 @@ if st.button("Generate Portfolio Summary"):
                 3. Total Net Inflow is after Expenses and does not include E/E CPF contribution.
                 4. Planned contributions assumed to be invested at the end of the year.
              """)
+    # todo: improve insights here. unlike to retire, to say at what age it will run out
+    # todo: suggest increasing the age? or just run with other ages to see what is the suitable fire age.
+    st.write(f"""
+                Key Insights:
+                1. You are {'likely' if withdrawn_from[-1]!='INSUFFICIENT' else 'not likely 😔'} to be able to retire at {fire_age}. 
+                {'This could be due to insufficient funds or withdrawal rules.' if withdrawn_from[-1]=='INSUFFICIENT' else 'Congrats! 🎉'}
+                2. At age {future_age}, you will have ${ending_total[-1]:,.0f} remaining.
+             """)
     pd.set_option('display.precision', 0)
     df = df.round(0)
     df = df.set_index([("","Age")])
     df.index.name = "Age"
 
-    st.dataframe(df)
+    tab1, tab2 = st.tabs(["Table", "Chart"])
+    with tab1:
+        st.dataframe(df)
+    with tab2:
+        # Plot chart
+        df_selected = df.loc[:, [("Ending Balances", "Total Portfolio Value")]]
+        df_selected.columns = df_selected.columns.droplevel()
+        st.bar_chart(df_selected)
 
-    # Plot chart
-    df_selected = df.loc[:, [("Ending Balances", "Total Portfolio Value")]]
-    df_selected.columns = df_selected.columns.droplevel()
-    st.bar_chart(df_selected)
+        st.bar_chart(withdrawal_df, x="Age",y="Withdrawals")
+        st.bar_chart(withdrawal_df, x="Age",y="Withdrawal Rate")
