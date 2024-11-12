@@ -41,7 +41,7 @@ st.write(f"Your mandatory expenses amounts to ${total_mandatory_expenses}.")
 st.write(f"You have ${current_income-total_mandatory_expenses} remaining.")
 st.write(f"Based on these inputs, your investment/saving rate is {(1-total_mandatory_expenses/current_income)*100}%.")
 
-# st.header("What are some personal goals and plans I have made for your future?")
+# st.header("Optional: What are some personal goals and plans I have made for my future?")
 # # to do: change to use LLM smart reading
 # col5, col6, col11 = st.columns(3)
 # with col5:
@@ -60,49 +60,52 @@ st.write(f"Based on these inputs, your investment/saving rate is {(1-total_manda
 # st.write(f"Your goals and plans amount to ${total_goals_expenses}.")
 # st.write(f"You have ${current_income-total_mandatory_expenses-total_goals_expenses} remaining.")
 
-# Inflation rate
+# Constants
 inflation_rate = 0.03
 income_rate = 0.03
 
+# Calculate number of years to project
+years = future_age - current_age + 1
+ages = list(range(current_age, future_age + 1))
+
+# Calculate expenses adjusted for inflation each year
+total_inflow = [current_income * ((1 + income_rate) ** i) if i <= fire_age-current_age else 0 for i in range(years)]
+total_outflow = [total_mandatory_expenses * ((1 + inflation_rate) ** i) for i in range(years)]
+net_inflow = [a - b for a, b in zip(total_inflow, total_outflow)]
+adj_living_expenses = [living_expenses * ((1 + inflation_rate) ** i) for i in range(years)]
+adj_insurance = [insurance * ((1 + inflation_rate) ** i) for i in range(years)]
+adj_taxes = [taxes * ((1 + inflation_rate) ** i) for i in range(years)]
+adj_allowances = [allowances * ((1 + inflation_rate) ** i) for i in range(years)]
+adj_other_expenses = [other_expenses * ((1 + inflation_rate) ** i) for i in range(years)]
+
+
+# Create a DataFrame to display the results
+data = {'Age': ages, 'Total Inflow': total_inflow,
+        'Living Expenses': adj_living_expenses,
+        'Taxes': adj_taxes,
+        'Insurance': adj_insurance,
+        'Allowances': adj_allowances,
+        'Other Expenses': adj_other_expenses,
+        'Total Outflow': total_outflow,
+        'Net Inflow': net_inflow}
+df = pd.DataFrame(data)
+df = df.set_index("Age")
+
 # Button to generate the table
 if st.button("Generate Cashflow Summary"):
-    # Calculate number of years to project
-    years = future_age - current_age + 1
-    ages = list(range(current_age, future_age + 1))
-    
-    # Calculate expenses adjusted for inflation each year
-    total_inflow = [current_income * ((1 + income_rate) ** i) for i in range(years)]
-    total_outflow = [total_mandatory_expenses * ((1 + inflation_rate) ** i) for i in range(years)]
-    adj_living_expenses = [living_expenses * ((1 + inflation_rate) ** i) for i in range(years)]
-    adj_insurance = [insurance * ((1 + inflation_rate) ** i) for i in range(years)]
-    adj_taxes = [taxes * ((1 + inflation_rate) ** i) for i in range(years)]
-    adj_allowances = [allowances * ((1 + inflation_rate) ** i) for i in range(years)]
-    adj_other_expenses = [other_expenses * ((1 + inflation_rate) ** i) for i in range(years)]
-    net_inflow = [a - b for a, b in zip(total_inflow, total_outflow)]
-
-    # Create a DataFrame to display the results
-    data = {'Age': ages, 'Total Inflow': total_inflow,
-            'Living Expenses': adj_living_expenses,
-            'Taxes': adj_taxes,
-            'Insurance': adj_insurance,
-            'Allowances': adj_allowances,
-            'Other Expenses': adj_other_expenses,
-            'Total Outflow': total_outflow,
-            'Net Inflow': net_inflow}
-    df = pd.DataFrame(data)
-    df = df.set_index("Age")
     # Display the table
-    st.write("Projected Cash flows (with assumptions)")
-    st.dataframe(df.style.format({"Total Inflow": "${:,.2f}",
-                                  "Living Expenses": "${:,.2f}",
-                                  "Taxes": "${:,.2f}",
-                                  "Insurance": "${:,.2f}",
-                                  "Allowances": "${:,.2f}",
-                                  "Other Expenses": "${:,.2f}",
-                                  "Total Outflow": "${:,.2f}",
-                                  "Net Inflow": "${:,.2f}"}))
+    st.write("""
+                Projected Cashflows with assumptions:
+                1. Annual income inflates at 3% p.a.
+                2. Inflation also increases at 3% p.a. for all expenses.
+                3. Assumes no drastic changes in expenses.
+                Note: -ve net inflow means that it needs to be compensated by portfolio returns/interests/drawdown.
+             """)
+    pd.set_option('display.precision', 0)
+    df = df.round(0)
+    st.dataframe(df)
 
-st.header("How will I be putting this net inflow to work?")
+st.header("How will I be putting this net inflow to work while I'm working?")
 col7, col8 = st.columns(2)
 with col7:
     cpf_sa_top_up = st.number_input("CPF Cash Top Up", min_value=0, value=8000)    
@@ -138,25 +141,17 @@ cpf_ma_rate = 1.04
 
 # Button to generate the table
 if st.button("Generate Portfolio Summary"):
-    # Calculate number of years to project
-    years = future_age - current_age + 1
-    ages = list(range(current_age, future_age + 1))
-    
-    contribute_cpf_oa_emp = []
-    contribute_cpf_sa_emp = []
-    contribute_cpf_ma_emp = []
-    contribute_cpf_sa_top_up = []
-    contribute_srs_top_up = []
-    contribute_st_inv = []
-    contribute_lt_inv = []
+    contribute_cpf_oa_emp, contribute_cpf_sa_emp, contribute_cpf_ma_emp = [], [], []
+    contribute_cpf_sa_top_up, contribute_srs_top_up = [], []
+    contribute_st_inv, contribute_lt_inv = [], []
 
-    ending_cash = []
-    ending_equities_cash = []
-    ending_equities_srs = []
-    ending_cpf_oa = []
-    ending_cpf_sa = []
-    ending_cpf_ma = []
+    ending_cash, ending_equities_cash, ending_equities_srs = [], [], []
+    ending_cpf_oa, ending_cpf_sa, ending_cpf_ma = [], [], []
     ending_total = []
+
+    returns_cash, returns_equities_cash, returns_equities_srs = [], [], []
+    returns_cpf_oa, returns_cpf_sa, returns_cpf_ma = [], [], []
+    returns_total = []
 
     for age in range(current_age, future_age + 1):
         # generate beginning balances
@@ -182,9 +177,9 @@ if st.button("Generate Portfolio Summary"):
         
         # generate top up amounts based on age and working years
         if current_age <= age <= fire_age:
-            cpf_oa_emp = 1564
-            cpf_sa_emp = 408
-            cpf_ma_emp = 544
+            cpf_oa_emp = 1564*12
+            cpf_sa_emp = 408*12
+            cpf_ma_emp = 544*12
             srs_top_up = srs_top_up
             long_term_inv = long_term_inv
             short_term_inv = short_term_inv
@@ -207,8 +202,20 @@ if st.button("Generate Portfolio Summary"):
         contribute_srs_top_up.append(srs_top_up)
         contribute_cpf_sa_top_up.append(cpf_sa_top_up)
         contribute_st_inv.append(short_term_inv)
-        contribute_lt_inv.append(long_term_inv)
-
+        # contribute_lt_inv.append(long_term_inv)
+        
+        # all goes to lt for now. TODO: customise based on % of remaining
+        contribute_lt_inv = [a - b - c if a-b-c>0 else 0 for a, b, c in zip(net_inflow, contribute_srs_top_up, contribute_cpf_sa_top_up)]
+        
+        # Generate portfolio returns
+        returns_cash.append(beginning_cash[-1]*short_term_rate-beginning_cash[-1])
+        returns_equities_cash.append(beginning_equities_cash[-1]*long_term_rate-beginning_equities_cash[-1])
+        returns_equities_srs.append(beginning_equities_srs[-1]*long_term_rate-beginning_equities_srs[-1])
+        returns_cpf_oa.append(beginning_cpf_oa[-1]*cpf_oa_rate-beginning_cpf_oa[-1])
+        returns_cpf_sa.append(beginning_cpf_sa[-1]*cpf_sa_rate-beginning_cpf_sa[-1])
+        returns_cpf_ma.append(beginning_cpf_ma[-1]*cpf_ma_rate-beginning_cpf_ma[-1])
+        returns_total.append(returns_cash[-1]+returns_equities_cash[-1]+returns_equities_srs[-1]+returns_cpf_oa[-1]+returns_cpf_sa[-1]+returns_cpf_ma[-1])
+    
         # Generate ending balances
         ending_cash.append(beginning_cash[-1]*short_term_rate+contribute_st_inv[-1])
         ending_equities_cash.append(beginning_equities_cash[-1]*long_term_rate+contribute_lt_inv[-1])
@@ -217,6 +224,7 @@ if st.button("Generate Portfolio Summary"):
         ending_cpf_sa.append(beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1])
         ending_cpf_ma.append(beginning_cpf_ma[-1]*cpf_ma_rate+contribute_cpf_ma_emp[-1])
         ending_total.append(ending_cash[-1]+ending_equities_cash[-1]+ending_equities_srs[-1]+ending_cpf_oa[-1]+ending_cpf_sa[-1]+ending_cpf_ma[-1])
+    
     
     # Create a DataFrame to display the results
     data = {'Age': ages, 
@@ -234,6 +242,14 @@ if st.button("Generate Portfolio Summary"):
             'Top up SRS': contribute_srs_top_up,
             'LT Cash Investments ': contribute_lt_inv,
             'ST Cash Investments': contribute_st_inv,
+            'Total Net Inflow': net_inflow,
+            'Returns Cash': returns_cash,
+            'Returns Equities in Cash': returns_equities_cash,
+            'Returns Equities in SRS': returns_equities_srs,
+            'Returns CPF OA': returns_cpf_oa,
+            'Returns CPF SA': returns_cpf_sa,
+            'Returns CPF MA': returns_cpf_ma,
+            'Total Portfolio Returns': returns_total,
             'Ending Cash': ending_cash,
             'Ending Equities in Cash': ending_equities_cash,
             'Ending Equities in SRS': ending_equities_srs,
@@ -244,9 +260,11 @@ if st.button("Generate Portfolio Summary"):
             }
     df = pd.DataFrame(data)
     columns_with_beginning = pd.MultiIndex.from_product([["Beginning Balances"], df.columns[1:8]])
-    columns_with_contributions = pd.MultiIndex.from_product([["Planned Contributions"], df.columns[8:15]])
-    columns_with_ending = pd.MultiIndex.from_product([["Ending Balances"], df.columns[15:]])
-    df.columns = pd.MultiIndex.from_tuples([("","Age")] + list(columns_with_beginning)+list(columns_with_contributions)+list(columns_with_ending))
+    columns_with_mandatory = pd.MultiIndex.from_product([["Mandatory Contributions"], df.columns[8:11]])
+    columns_with_contributions = pd.MultiIndex.from_product([["Planned Contributions"], df.columns[11:16]])
+    columns_with_returns = pd.MultiIndex.from_product([["Portfolio Returns"], df.columns[16:23]])
+    columns_with_ending = pd.MultiIndex.from_product([["Ending Balances"], df.columns[23:]])
+    df.columns = pd.MultiIndex.from_tuples([("","Age")] + list(columns_with_beginning)+list(columns_with_mandatory)+list(columns_with_contributions)+list(columns_with_returns)+list(columns_with_ending))
     
     # Remove Ending string from columns
     fixed_string = "Ending "
@@ -255,11 +273,29 @@ if st.button("Generate Portfolio Summary"):
     new_columns = list(zip(df.columns.get_level_values(0), new_column_names))
     df.columns = pd.MultiIndex.from_tuples(new_columns)
 
+    # Remove Returns string from columns
+    fixed_string = "Returns "
+    columns_to_remove = [col for col in df.columns.get_level_values(1) if fixed_string in str(col)]
+    new_column_names = [col.replace(fixed_string, '') if fixed_string in str(col) else col for col in df.columns.get_level_values(1)]
+    new_columns = list(zip(df.columns.get_level_values(0), new_column_names))
+    df.columns = pd.MultiIndex.from_tuples(new_columns)
+
     # Display the table
-    st.write("Projected Portfolio value (with assumptions)")
+    st.write("""
+                Projected Portfolio Value with assumptions:
+                1. Annual income inflates at 3% p.a.
+                2. Inflation also increases at 3% p.a. for all expenses.
+                3. Total Net Inflow is after Expenses and does not include E/E CPF contribution.
+                4. Planned contributions assumed to be invested at the end of the year.
+             """)
     pd.set_option('display.precision', 0)
     df = df.round(0)
     df = df.set_index([("","Age")])
     df.index.name = "Age"
 
     st.dataframe(df)
+
+    # Plot chart
+    df_selected = df.loc[:, [("Ending Balances", "Total Portfolio Value")]]
+    df_selected.columns = df_selected.columns.droplevel()
+    st.bar_chart(df_selected)
