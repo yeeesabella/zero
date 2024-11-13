@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+from sot import bhs_df, frs_df
+from datetime import datetime
 
 st.title("Project 0️⃣")
 st.write(
@@ -23,6 +25,24 @@ with col2:
     cpf_contribution = st.number_input("CPF Employer+Employee Contribution", value=0)
 
 fire_age = st.number_input("Check if I can stop work at Age...", min_value=0, value=40)
+
+# generate bhs, frs table based on current age
+# projected bhs 5%, frs 3.5%
+if current_age<65:
+    current_year = datetime.now().year
+    my_bhs = int(bhs_df[bhs_df['year']==current_year]['BHS'])
+else: 
+    current_year = datetime.now().year
+    age_65_year = current_year - current_age + 65
+    my_bhs = int(bhs_df[bhs_df['year']==age_65_year]['BHS'])
+
+if current_age<55:
+    current_year = datetime.now().year
+    my_frs = int(frs_df[frs_df['year']==current_year]['FRS'])
+else: 
+    current_year = datetime.now().year
+    age_55_year = current_year - current_age + 55
+    my_frs = int(frs_df[frs_df['year']==age_55_year]['FRS'])
 
 st.header("How much do I spend on the following mandatory expenses")
 col3, col4 = st.columns(2)
@@ -154,6 +174,8 @@ if st.button("Generate Portfolio Summary"):
     ending_total = []
 
     withdrawals, withdrawn_from, withdrawal_rate = [], [], []
+    max_bhs = []
+    max_frs = []
 
     for age in range(current_age, future_age + 1):
         # generate beginning balances
@@ -166,7 +188,8 @@ if st.button("Generate Portfolio Summary"):
             beginning_cpf_sa = [current_cpf_sa]
             beginning_cpf_ma = [current_cpf_ma]
             beginning_total = [current_cash+current_equities_in_cash+current_equities_in_srs+current_cpf_oa+current_cpf_sa+current_cpf_ma]
-            
+            max_bhs = [my_bhs]
+            max_frs = [my_frs]
         else:
             ages.append(age)
             beginning_cash.append(ending_cash[-1])
@@ -176,6 +199,15 @@ if st.button("Generate Portfolio Summary"):
             beginning_cpf_sa.append(ending_cpf_sa[-1])
             beginning_cpf_ma.append(ending_cpf_ma[-1])
             beginning_total.append(ending_total[-1])
+            if age <= 65 : 
+                max_bhs.append(round(my_bhs*pow(1.05,age-current_age),-2))
+            else:
+                max_bhs.append(max_bhs[-1])
+            if age <= 55:                
+                max_frs.append(round(my_frs*pow(1.035,age-current_age),-2))
+            else:
+                max_frs.append(max_frs[-1])
+
         
         # generate top up amounts based on age and working years
         if current_age <= age <= fire_age:
@@ -208,7 +240,6 @@ if st.button("Generate Portfolio Summary"):
         
         # all goes to lt for now. TODO: customise based on % of remaining
         contribute_lt_inv = [a - b - c if a-b-c>0 else 0 for a, b, c in zip(net_inflow, contribute_srs_top_up, contribute_cpf_sa_top_up)]
-        
         
         # Generate withdrawals, with sequence
         if net_inflow[age-30]<0:
@@ -245,9 +276,20 @@ if st.button("Generate Portfolio Summary"):
         ending_cash.append(beginning_cash[-1]*short_term_rate+contribute_st_inv[-1])
         ending_equities_cash.append(beginning_equities_cash[-1]*long_term_rate+contribute_lt_inv[-1])
         ending_equities_srs.append(beginning_equities_srs[-1]*long_term_rate+contribute_srs_top_up[-1])
-        ending_cpf_oa.append(beginning_cpf_oa[-1]*cpf_oa_rate+contribute_cpf_oa_emp[-1])
-        ending_cpf_sa.append(beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1])
-        ending_cpf_ma.append(beginning_cpf_ma[-1]*cpf_ma_rate+contribute_cpf_ma_emp[-1])
+        # MA limit overflow to SA then OA
+        if beginning_cpf_ma[-1]*cpf_ma_rate+contribute_cpf_ma_emp[-1]<max_bhs[-1]: # less than bhs
+            ending_cpf_ma.append(beginning_cpf_ma[-1]*cpf_ma_rate+contribute_cpf_ma_emp[-1])
+            ending_cpf_sa.append(beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1])
+            ending_cpf_oa.append(beginning_cpf_oa[-1]*cpf_oa_rate+contribute_cpf_oa_emp[-1])
+        else: # exceeds bhs
+            ending_cpf_ma.append(max_bhs[-1])
+            if beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]<max_frs[-1]: # ma will contribute to sa
+                ending_cpf_sa.append((beginning_cpf_ma[-1]*cpf_ma_rate+contribute_cpf_ma_emp[-1]-max_bhs[-1])+beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1])
+                ending_cpf_oa.append(beginning_cpf_oa[-1]*cpf_oa_rate+contribute_cpf_oa_emp[-1])
+            else: # ma contribute to oa
+                ending_cpf_sa.append(beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1])
+                ending_cpf_oa.append((beginning_cpf_ma[-1]*cpf_ma_rate+contribute_cpf_ma_emp[-1]-max_bhs[-1])+beginning_cpf_oa[-1]*cpf_oa_rate+contribute_cpf_oa_emp[-1])
+        
         ending_total.append(ending_cash[-1]+ending_equities_cash[-1]+ending_equities_srs[-1]+ending_cpf_oa[-1]+ending_cpf_sa[-1]+ending_cpf_ma[-1])
     
     
@@ -258,6 +300,12 @@ if st.button("Generate Portfolio Summary"):
                         'Withdrawal Rate': [a/b for a, b in zip(withdrawals, ending_total)],
                        }
     withdrawal_df = pd.DataFrame(withdrawal_data)
+
+    max_cpf = {'Age': ages, 
+               'BHS': max_bhs,
+               'FRS': max_frs,
+    }
+    max_cpf_df = pd.DataFrame(max_cpf)
 
     data = {'Age': ages, 
             'Cash': beginning_cash,
@@ -293,6 +341,7 @@ if st.button("Generate Portfolio Summary"):
             'Ending Total Portfolio Value': ending_total,
             }
     df = pd.DataFrame(data)
+
     columns_with_beginning = pd.MultiIndex.from_product([["Beginning Balances"], df.columns[1:8]])
     columns_with_mandatory = pd.MultiIndex.from_product([["Mandatory Contributions"], df.columns[10:13]])
     columns_with_contributions = pd.MultiIndex.from_product([["Planned Contributions"], df.columns[13:18]])
@@ -335,7 +384,7 @@ if st.button("Generate Portfolio Summary"):
     df = df.set_index([("","Age")])
     df.index.name = "Age"
 
-    tab1, tab2 = st.tabs(["Table", "Chart"])
+    tab1, tab2, tab3 = st.tabs(["Table", "Chart", "Appendix"])
     with tab1:
         st.dataframe(df)
     with tab2:
@@ -346,3 +395,15 @@ if st.button("Generate Portfolio Summary"):
 
         st.bar_chart(withdrawal_df, x="Age",y="Withdrawals")
         st.bar_chart(withdrawal_df, x="Age",y="Withdrawal Rate")
+    with tab3:
+        st.subheader("Your Projected BHS/FRS")
+        max_cpf_df = max_cpf_df.set_index("Age")
+        st.dataframe(max_cpf_df)
+
+        st.subheader("[Reference] Past Basic Healthcare Sum (BHS)")
+        st.write("BHS is fixed at age 65. Future BHS amount are projected at 5%.")
+        st.dataframe(bhs_df)
+
+        st.subheader("[Reference] Past Full Retirement Sum (FRS)")
+        st.write("FRS is fixed at age 55. Note: 2016 FRS takes 2015 numbers. Future FRS amount are projected at 3.5%.")
+        st.dataframe(frs_df)
