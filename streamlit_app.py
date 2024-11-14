@@ -181,6 +181,7 @@ if st.button("Generate Portfolio Summary"):
         # generate beginning balances
         if current_age == age:
             ages = [current_age]
+            years = [current_year]
             beginning_cash = [current_cash]
             beginning_equities_cash = [current_equities_in_cash]
             beginning_equities_srs = [current_equities_in_srs]
@@ -192,6 +193,7 @@ if st.button("Generate Portfolio Summary"):
             max_frs = [my_frs]
         else:
             ages.append(age)
+            years.append(current_year+(age-current_age))
             beginning_cash.append(ending_cash[-1])
             beginning_equities_cash.append(ending_equities_cash[-1])
             beginning_equities_srs.append(ending_equities_srs[-1])
@@ -211,13 +213,9 @@ if st.button("Generate Portfolio Summary"):
         
         # generate top up amounts based on age and working years
         if current_age <= age <= fire_age:
-            # cpf_oa_emp = cpf_contribution*0.6217
-            # cpf_sa_emp = cpf_contribution*0.1621
-            # cpf_ma_emp = cpf_contribution*0.2162
             cpf_oa_emp = cpf_contribution*float(cpf_allocation_by_age_df[(cpf_allocation_by_age_df['Start Age']<=age)&(cpf_allocation_by_age_df['End Age']>=age)]['OA %'])
             cpf_sa_emp = cpf_contribution*float(cpf_allocation_by_age_df[(cpf_allocation_by_age_df['Start Age']<=age)&(cpf_allocation_by_age_df['End Age']>=age)]['SA %'])
             cpf_ma_emp = cpf_contribution*float(cpf_allocation_by_age_df[(cpf_allocation_by_age_df['Start Age']<=age)&(cpf_allocation_by_age_df['End Age']>=age)]['MA %'])
-            # print(cpf_allocation_by_age_df[(cpf_allocation_by_age_df['Start Age']<=age)&(cpf_allocation_by_age_df['End Age']>=age)]['OA %'])
             srs_top_up = srs_top_up
             long_term_inv = long_term_inv
             short_term_inv = short_term_inv
@@ -318,8 +316,8 @@ if st.button("Generate Portfolio Summary"):
                'FRS': max_frs,
     }
     max_cpf_df = pd.DataFrame(max_cpf)
-
-    data = {'Age': ages, 
+    
+    data = {'Year/Age': [str(a)+'/'+str(b) for a, b in zip(years, ages)], 
             'Cash': beginning_cash,
             'Equities in Cash': beginning_equities_cash,
             'Equities in SRS': beginning_equities_srs,
@@ -359,7 +357,7 @@ if st.button("Generate Portfolio Summary"):
     columns_with_contributions = pd.MultiIndex.from_product([["Planned Contributions"], df.columns[13:18]])
     columns_with_returns = pd.MultiIndex.from_product([["Portfolio Returns"], df.columns[18:25]])
     columns_with_ending = pd.MultiIndex.from_product([["Ending Balances"], df.columns[25:]])
-    df.columns = pd.MultiIndex.from_tuples([("","Age")] + list(columns_with_beginning)+[("","Withdrawals"),("","Withdrawn from")]+list(columns_with_mandatory)+list(columns_with_contributions)+list(columns_with_returns)+list(columns_with_ending))
+    df.columns = pd.MultiIndex.from_tuples([("","Year/Age")] + list(columns_with_beginning)+[("","Withdrawals"),("","Withdrawn from")]+list(columns_with_mandatory)+list(columns_with_contributions)+list(columns_with_returns)+list(columns_with_ending))
     
     # Remove Ending string from columns
     fixed_string = "Ending "
@@ -386,8 +384,8 @@ if st.button("Generate Portfolio Summary"):
     
     pd.set_option('display.precision', 0)
     df = df.round(0)
-    df = df.set_index([("","Age")])
-    df.index.name = "Age"
+    df = df.set_index([("","Year/Age")])
+    df.index.name = "Year/Age"
 
     tab1, tab2, tab3 = st.tabs(["Table", "Chart", "Appendix"])
     with tab1:
