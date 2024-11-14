@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sot import bhs_df, frs_df
+from sot import bhs_df, frs_df, cpf_allocation_by_age_df
 from datetime import datetime
 
 st.title("Project 0️⃣")
@@ -22,7 +22,7 @@ with col1:
 
 with col2:
     future_age = st.number_input("Mortality Age", min_value=current_age + 1, value=95,help="when you expect to stop planning")
-    cpf_contribution = st.number_input("CPF Employer+Employee Contribution", value=0)
+    cpf_contribution = st.number_input("CPF Employer+Employee Contribution", min_value=0, value = 2516*12)
 
 fire_age = st.number_input("Check if I can stop work at Age...", min_value=0, value=40)
 
@@ -211,9 +211,13 @@ if st.button("Generate Portfolio Summary"):
         
         # generate top up amounts based on age and working years
         if current_age <= age <= fire_age:
-            cpf_oa_emp = 1564*12
-            cpf_sa_emp = 408*12
-            cpf_ma_emp = 544*12
+            # cpf_oa_emp = cpf_contribution*0.6217
+            # cpf_sa_emp = cpf_contribution*0.1621
+            # cpf_ma_emp = cpf_contribution*0.2162
+            cpf_oa_emp = cpf_contribution*float(cpf_allocation_by_age_df[(cpf_allocation_by_age_df['Start Age']<=age)&(cpf_allocation_by_age_df['End Age']>=age)]['OA %'])
+            cpf_sa_emp = cpf_contribution*float(cpf_allocation_by_age_df[(cpf_allocation_by_age_df['Start Age']<=age)&(cpf_allocation_by_age_df['End Age']>=age)]['SA %'])
+            cpf_ma_emp = cpf_contribution*float(cpf_allocation_by_age_df[(cpf_allocation_by_age_df['Start Age']<=age)&(cpf_allocation_by_age_df['End Age']>=age)]['MA %'])
+            # print(cpf_allocation_by_age_df[(cpf_allocation_by_age_df['Start Age']<=age)&(cpf_allocation_by_age_df['End Age']>=age)]['OA %'])
             srs_top_up = srs_top_up
             long_term_inv = long_term_inv
             short_term_inv = short_term_inv
@@ -283,7 +287,7 @@ if st.button("Generate Portfolio Summary"):
             if age<55 or beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]<max_frs[-1]: # below 55 or below frs, continue as usual
                 ending_cpf_sa.append(beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1])
                 ending_cpf_oa.append(beginning_cpf_oa[-1]*cpf_oa_rate+contribute_cpf_oa_emp[-1])
-            else: # above 55 and frs hit
+            else: # above 55 and frs hit, ma not hit yet
                 ending_cpf_sa.append(max_frs[-1]) # takes frs value at 55, transferred to oa
                 transfer_sa_to_oa = beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]-max_frs[-1]
                 ending_cpf_oa.append(transfer_sa_to_oa+beginning_cpf_oa[-1]*cpf_oa_rate+contribute_cpf_oa_emp[-1])
@@ -398,6 +402,7 @@ if st.button("Generate Portfolio Summary"):
         st.bar_chart(withdrawal_df, x="Age",y="Withdrawal Rate")
     with tab3:
         st.subheader("Your Projected BHS/FRS")
+        st.write("Future BHS amount are projected at 5%. Future FRS amount are projected at 3.5%.")
         max_cpf_df = max_cpf_df.set_index("Age")
         st.dataframe(max_cpf_df)
 
@@ -408,13 +413,28 @@ if st.button("Generate Portfolio Summary"):
         st.subheader("[Reference] Past Full Retirement Sum (FRS)")
         st.write("FRS is fixed at age 55. Note: 2016 FRS takes 2015 numbers. Future FRS amount are projected at 3.5%.")
         st.dataframe(frs_df)
+
+        st.subheader("[Reference] CPF Allocation Rates by Age")
+        st.dataframe(cpf_allocation_by_age_df.drop(columns=['Start Age','End Age']))
         
     # todo: improve insights here. unlike to retire, to say at what age it will run out
     # todo: suggest increasing the age? or just run with other ages to see what is the suitable fire age.
+    try:
+        index = beginning_cpf_ma.index(int(max_cpf_df.loc[65]['BHS']))
+        hit_bhs_message = f'You will hit BHS (age 65 amount) at age {str(index+30)}.'
+    except ValueError:
+        hit_bhs_message = f'You will not hit BHS (age 65 amount) if you retire at {fire_age}'
+    try:
+        index = beginning_cpf_sa.index(int(max_cpf_df.loc[55]['FRS']))
+        hit_frs_message = f'You will hit FRS (age 55 amount) at age {str(index+30)}.'
+    except ValueError:
+        hit_frs_message = f'You will not hit FRS (age 55 amount) if you retire at {fire_age}'
     insights = f"""
                 Key Insights
-                1. You are {'likely' if withdrawn_from[-1]!='INSUFFICIENT' else 'not likely 😔'} to be able to retire at {fire_age}. 
-                {'This could be due to insufficient funds or withdrawal rules.' if withdrawn_from[-1]=='INSUFFICIENT' else 'Congrats! 🎉'}
+                1. You are {'likely' if 'INSUFFICIENT' not in withdrawn_from else 'not likely 😔'} to be able to retire at age {fire_age}. 
+                {'This could be due to insufficient funds or withdrawal rules.' if 'INSUFFICIENT' in withdrawn_from else 'Congrats! 🎉'}
                 2. At age {future_age}, you will have ${ending_total[-1]:,.0f} remaining.
+                3. {hit_bhs_message}
+                4. {hit_frs_message}
              """
     st.info(insights, icon="💡")

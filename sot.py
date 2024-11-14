@@ -28,22 +28,19 @@ frs_data = {'year': years,
 
 frs_df = pd.DataFrame(frs_data)
 
-current_age=58
-if current_age<=65:
-    current_year = datetime.now().year
-    my_bhs = bhs_df[bhs_df['year']==current_year]['BHS']
-else: 
-    current_year = datetime.now().year
-    age_65_year = current_year - current_age + 65
-    my_bhs = bhs_df[bhs_df['year']==age_65_year]['BHS']
+# CPF allocation rates by age
+age_start = [0,36,46,51,56,61,66,71]
+age_end = [35,45,50,55,60,65,70,100]
+age_range = ['<=35','36-45','46-50','46-55','56-60','61-65','66-70','71-100']
+oa_allocation = [0.6217,0.5677,0.5136,0.4055,0.3872,0.1592,0.0607,0.08]
+sa_allocation = [0.1621,0.1891,0.2162,0.3108,0.2741,0.3636,0.303,0.08]
+ma_allocation = [0.2162,0.2432,0.2702,0.2837,0.3387,0.4772,0.6363,0.08]
+cpf_allocation_by_age = { 'Start Age': age_start,
+                         'End Age': age_end,
+                         'Age Range': age_range,
+                         'OA %': oa_allocation,
+                         'SA %': sa_allocation,
+                         'MA %': ma_allocation,
+                        }
 
-if current_age<=55:
-    current_year = datetime.now().year
-    my_frs = frs_df[frs_df['year']==current_year]['FRS']
-else: 
-    current_year = datetime.now().year
-    age_55_year = current_year - current_age + 55
-    my_frs = frs_df[frs_df['year']==age_55_year]['FRS']
-
-print(my_bhs)
-print(my_frs)
+cpf_allocation_by_age_df = pd.DataFrame(cpf_allocation_by_age)
