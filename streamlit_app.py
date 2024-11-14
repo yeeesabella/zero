@@ -276,20 +276,29 @@ if st.button("Generate Portfolio Summary"):
         ending_cash.append(beginning_cash[-1]*short_term_rate+contribute_st_inv[-1])
         ending_equities_cash.append(beginning_equities_cash[-1]*long_term_rate+contribute_lt_inv[-1])
         ending_equities_srs.append(beginning_equities_srs[-1]*long_term_rate+contribute_srs_top_up[-1])
-        # MA limit overflow to SA then OA
+        
+        # base case: MA limit overflow to SA then OA, regardless of SA limit before age 55
         if beginning_cpf_ma[-1]*cpf_ma_rate+contribute_cpf_ma_emp[-1]<max_bhs[-1]: # less than bhs
             ending_cpf_ma.append(beginning_cpf_ma[-1]*cpf_ma_rate+contribute_cpf_ma_emp[-1])
-            ending_cpf_sa.append(beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1])
-            ending_cpf_oa.append(beginning_cpf_oa[-1]*cpf_oa_rate+contribute_cpf_oa_emp[-1])
+            if age<55 or beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]<max_frs[-1]: # below 55 or below frs, continue as usual
+                ending_cpf_sa.append(beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1])
+                ending_cpf_oa.append(beginning_cpf_oa[-1]*cpf_oa_rate+contribute_cpf_oa_emp[-1])
+            else: # above 55 and frs hit
+                ending_cpf_sa.append(max_frs[-1]) # takes frs value at 55, transferred to oa
+                transfer_sa_to_oa = beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]-max_frs[-1]
+                transfer_ma_to_oa = beginning_cpf_ma[-1]*cpf_ma_rate+contribute_cpf_ma_emp[-1]-max_bhs[-1]
+                ending_cpf_oa.append(transfer_sa_to_oa+transfer_ma_to_oa+beginning_cpf_oa[-1]*cpf_oa_rate+contribute_cpf_oa_emp[-1])
         else: # exceeds bhs
             ending_cpf_ma.append(max_bhs[-1])
-            if beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]<max_frs[-1]: # ma will contribute to sa
+            if age<55 or beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]<max_frs[-1]: # below 55 or below frs, ma will contribute to sa
                 ending_cpf_sa.append((beginning_cpf_ma[-1]*cpf_ma_rate+contribute_cpf_ma_emp[-1]-max_bhs[-1])+beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1])
                 ending_cpf_oa.append(beginning_cpf_oa[-1]*cpf_oa_rate+contribute_cpf_oa_emp[-1])
-            else: # ma contribute to oa
-                ending_cpf_sa.append(beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1])
-                ending_cpf_oa.append((beginning_cpf_ma[-1]*cpf_ma_rate+contribute_cpf_ma_emp[-1]-max_bhs[-1])+beginning_cpf_oa[-1]*cpf_oa_rate+contribute_cpf_oa_emp[-1])
-        
+            else: # above 55 and frs hit, ma contribute to oa
+                ending_cpf_sa.append(max_frs[-1]) # takes frs value at 55, transferred to oa
+                transfer_sa_to_oa = beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]-max_frs[-1]
+                transfer_ma_to_oa = beginning_cpf_ma[-1]*cpf_ma_rate+contribute_cpf_ma_emp[-1]-max_bhs[-1]
+                ending_cpf_oa.append(transfer_sa_to_oa+transfer_ma_to_oa+beginning_cpf_oa[-1]*cpf_oa_rate+contribute_cpf_oa_emp[-1])
+
         ending_total.append(ending_cash[-1]+ending_equities_cash[-1]+ending_equities_srs[-1]+ending_cpf_oa[-1]+ending_cpf_sa[-1]+ending_cpf_ma[-1])
     
     
