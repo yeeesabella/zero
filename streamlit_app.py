@@ -286,8 +286,7 @@ if st.button("Generate Portfolio Summary"):
             else: # above 55 and frs hit
                 ending_cpf_sa.append(max_frs[-1]) # takes frs value at 55, transferred to oa
                 transfer_sa_to_oa = beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]-max_frs[-1]
-                transfer_ma_to_oa = beginning_cpf_ma[-1]*cpf_ma_rate+contribute_cpf_ma_emp[-1]-max_bhs[-1]
-                ending_cpf_oa.append(transfer_sa_to_oa+transfer_ma_to_oa+beginning_cpf_oa[-1]*cpf_oa_rate+contribute_cpf_oa_emp[-1])
+                ending_cpf_oa.append(transfer_sa_to_oa+beginning_cpf_oa[-1]*cpf_oa_rate+contribute_cpf_oa_emp[-1])
         else: # exceeds bhs
             ending_cpf_ma.append(max_bhs[-1])
             if age<55 or beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]<max_frs[-1]: # below 55 or below frs, ma will contribute to sa
@@ -380,14 +379,7 @@ if st.button("Generate Portfolio Summary"):
                 3. Total Net Inflow is after Expenses and does not include E/E CPF contribution.
                 4. Planned contributions assumed to be invested at the end of the year.
              """)
-    # todo: improve insights here. unlike to retire, to say at what age it will run out
-    # todo: suggest increasing the age? or just run with other ages to see what is the suitable fire age.
-    st.write(f"""
-                Key Insights:
-                1. You are {'likely' if withdrawn_from[-1]!='INSUFFICIENT' else 'not likely 😔'} to be able to retire at {fire_age}. 
-                {'This could be due to insufficient funds or withdrawal rules.' if withdrawn_from[-1]=='INSUFFICIENT' else 'Congrats! 🎉'}
-                2. At age {future_age}, you will have ${ending_total[-1]:,.0f} remaining.
-             """)
+    
     pd.set_option('display.precision', 0)
     df = df.round(0)
     df = df.set_index([("","Age")])
@@ -416,3 +408,13 @@ if st.button("Generate Portfolio Summary"):
         st.subheader("[Reference] Past Full Retirement Sum (FRS)")
         st.write("FRS is fixed at age 55. Note: 2016 FRS takes 2015 numbers. Future FRS amount are projected at 3.5%.")
         st.dataframe(frs_df)
+        
+    # todo: improve insights here. unlike to retire, to say at what age it will run out
+    # todo: suggest increasing the age? or just run with other ages to see what is the suitable fire age.
+    insights = f"""
+                Key Insights
+                1. You are {'likely' if withdrawn_from[-1]!='INSUFFICIENT' else 'not likely 😔'} to be able to retire at {fire_age}. 
+                {'This could be due to insufficient funds or withdrawal rules.' if withdrawn_from[-1]=='INSUFFICIENT' else 'Congrats! 🎉'}
+                2. At age {future_age}, you will have ${ending_total[-1]:,.0f} remaining.
+             """
+    st.info(insights, icon="💡")
