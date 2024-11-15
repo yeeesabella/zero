@@ -22,9 +22,9 @@ with col1:
 
 with col2:
     future_age = st.number_input("Mortality Age", min_value=current_age + 1, value=95,help="when you expect to stop planning")
-    cpf_contribution = st.number_input("CPF Employer+Employee Contribution", min_value=0, value = 2516*12)
+    cpf_contribution = st.number_input("Annual CPF Employer+Employee Contribution", min_value=0, value = 2516*12)
 
-fire_age = st.number_input("Check if I can stop work at Age...", min_value=0, value=40)
+fire_age = st.number_input("Check if I can retire at age...", min_value=0, value=40, help="what retirement means differ for everyone. you may not stop work completely but this checks if you will need to work for money ever again")
 
 # generate bhs, frs table based on current age
 # projected bhs 5%, frs 3.5%
@@ -176,6 +176,7 @@ if st.button("Generate Portfolio Summary"):
     withdrawals, withdrawn_from, withdrawal_rate = [], [], []
     max_bhs = []
     max_frs = []
+    first_bhs_age,first_frs_age = [], []
 
     for age in range(current_age, future_age + 1):
         # generate beginning balances
@@ -291,6 +292,7 @@ if st.button("Generate Portfolio Summary"):
                 ending_cpf_oa.append(transfer_sa_to_oa+beginning_cpf_oa[-1]*cpf_oa_rate+contribute_cpf_oa_emp[-1])
         else: # exceeds bhs
             ending_cpf_ma.append(max_bhs[-1])
+            first_bhs_age.append(age+1)
             if age<55 or beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]<max_frs[-1]: # below 55 or below frs, ma will contribute to sa
                 ending_cpf_sa.append((beginning_cpf_ma[-1]*cpf_ma_rate+contribute_cpf_ma_emp[-1]-max_bhs[-1])+beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1])
                 ending_cpf_oa.append(beginning_cpf_oa[-1]*cpf_oa_rate+contribute_cpf_oa_emp[-1])
@@ -299,7 +301,8 @@ if st.button("Generate Portfolio Summary"):
                 transfer_sa_to_oa = beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]-max_frs[-1]
                 transfer_ma_to_oa = beginning_cpf_ma[-1]*cpf_ma_rate+contribute_cpf_ma_emp[-1]-max_bhs[-1]
                 ending_cpf_oa.append(transfer_sa_to_oa+transfer_ma_to_oa+beginning_cpf_oa[-1]*cpf_oa_rate+contribute_cpf_oa_emp[-1])
-
+        if beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]>=max_frs[-1]: # max frs for the year
+            first_frs_age.append(age+1)
         ending_total.append(ending_cash[-1]+ending_equities_cash[-1]+ending_equities_srs[-1]+ending_cpf_oa[-1]+ending_cpf_sa[-1]+ending_cpf_ma[-1])
     
     
@@ -419,20 +422,42 @@ if st.button("Generate Portfolio Summary"):
     # todo: suggest increasing the age? or just run with other ages to see what is the suitable fire age.
     try:
         index = beginning_cpf_ma.index(int(max_cpf_df.loc[65]['BHS']))
-        hit_bhs_message = f'You will hit BHS (age 65 amount) at age {str(index+30)}.'
+        first_bhs_message = f'You will first achieve the Basic Healthcare Sum (BHS) at the beginning of age {min(first_bhs_age)}.'
+        if min(first_bhs_age)<65:
+            bhs_info_message = 'Note: Without additional cash top up, your MA will fall behind BHS in subsequent years as BHS is projected to increase at 5% p.a. while the interests from MA is only 4%. '
+            final_bhs_message = f'You will later achieve the final BHS amount at age {str(index+30)}.'
+        else:
+            bhs_info_message = ''
+            final_bhs_message = f'Since BHS is fixed after age 65, you will continue to meet the BHS amount after.'
     except ValueError:
-        hit_bhs_message = f'You will not hit BHS (age 65 amount) if you retire at {fire_age}'
+        first_bhs_message = ''
+        final_bhs_message = f'You will not achieve the Basic Healthcare Sum (BHS) (age 65 amount) if you retire at {fire_age}. Consider topping up to your MA with Cash or working longer.'
+    
     try:
-        index = beginning_cpf_sa.index(int(max_cpf_df.loc[55]['FRS']))
-        hit_frs_message = f'You will hit FRS (age 55 amount) at age {str(index+30)}.'
+        # index = beginning_cpf_ma.index(int(max_cpf_df.loc[55]['FRS']))
+        first_frs_message = f'You will first achieve the Full Retirement Sum (FRS) at the beginning of age {min(first_frs_age)}.'
+        if min(first_frs_age)<55:
+            frs_info_message = f'Note: You do not need to do additional top up after you have first achieved FRS as FRS is projected to increase at 3.5% p.a. and interests from SA is at 4%, sufficient to cover for the increasing FRS.'
+        else:
+            frs_info_message = ''
     except ValueError:
-        hit_frs_message = f'You will not hit FRS (age 55 amount) if you retire at {fire_age}'
-    insights = f"""
-                Key Insights
-                1. You are {'likely' if 'INSUFFICIENT' not in withdrawn_from else 'not likely 😔'} to be able to retire at age {fire_age}. 
-                {'This could be due to insufficient funds or withdrawal rules.' if 'INSUFFICIENT' in withdrawn_from else 'Congrats! 🎉'}
-                2. At age {future_age}, you will have ${ending_total[-1]:,.0f} remaining.
-                3. {hit_bhs_message}
-                4. {hit_frs_message}
-             """
-    st.info(insights, icon="💡")
+        first_frs_message = f'You will not achieve the Full Retirement Sum (FRS) (age 55 amount) if you retire at {fire_age}. Consider topping up to your SA with Cash or working longer.'
+    
+    if 'INSUFFICIENT' not in withdrawn_from: # can fire
+        insights = f"""
+                    What this means...
+                    1. Congrats! 🎉 You have enough to drawdown on your portfolio and returns. At age {fire_age}, you will have ${beginning_total[fire_age-current_age]:,.0f} in portfolio value. 
+                    2. At age {future_age}, you will have ${ending_total[-1]:,.0f} remaining. {'This far exceeds the desired near-zero portfolio value. You could increase your expenses and enjoy more!' if ending_total[-1]>500000 else ''}
+                    3. {first_bhs_message} {bhs_info_message} {final_bhs_message}
+                    4. {first_frs_message} {frs_info_message}
+                    """
+        st.success(insights, icon="🔥")
+    else: 
+        insights = f"""
+                    What this means...
+                    1. You do not have enough to drawdown on your portfolio/returns until age {future_age} or the withdrawal rules of CPF OA and/or SRS does not permit. At age {fire_age}, you will have ${beginning_total[fire_age-current_age]:,.0f} in portfolio value. Try increasing your income, lowering your expenses or work for longer. 
+                    2. At age {future_age}, you will have ${ending_total[-1]:,.0f} remaining.
+                    3. {first_bhs_message} {bhs_info_message} {final_bhs_message}
+                    4. {first_frs_message} {frs_info_message}
+                    """
+        st.warning(insights, icon="⚠️")
