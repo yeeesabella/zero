@@ -59,7 +59,7 @@ with col4:
 total_mandatory_expenses = living_expenses+insurance+taxes+allowances+other_expenses
 st.write(f"Your mandatory expenses amounts to ${total_mandatory_expenses}.")
 st.write(f"You have ${current_income-total_mandatory_expenses} remaining.")
-st.write(f"Based on these inputs, your investment/saving rate is {(1-total_mandatory_expenses/current_income)*100}%.")
+st.write(f"Based on these inputs, your investment/saving rate is {(1-total_mandatory_expenses/current_income)*100:.0f}%.")
 
 # st.header("Optional: What are some personal goals and plans I have made for my future?")
 # # to do: change to use LLM smart reading
@@ -173,10 +173,12 @@ if st.button("Generate Portfolio Summary"):
     ending_cpf_oa, ending_cpf_sa, ending_cpf_ma = [], [], []
     ending_total = []
 
-    withdrawals, withdrawn_from, withdrawal_rate = [], [], []
+    withdrawals_for_expense, withdrawals_to_cash_eq, withdrawn_from, withdrawal_rate = [], [], [], []
     max_bhs = []
     max_frs = []
     first_bhs_age,first_frs_age = [], []
+
+    srs_withdrawal_count = 10
 
     for age in range(current_age, future_age + 1):
         # generate beginning balances
@@ -243,28 +245,6 @@ if st.button("Generate Portfolio Summary"):
         
         # all goes to lt for now. TODO: customise based on % of remaining
         contribute_lt_inv = [a - b - c if a-b-c>0 else 0 for a, b, c in zip(net_inflow, contribute_srs_top_up, contribute_cpf_sa_top_up)]
-        
-        # Generate withdrawals, with sequence
-        if net_inflow[age-30]<0:
-            withdrawals.append(-net_inflow[age-30])
-            # 1. CPF OA after age 55 and sufficient amount
-            if age>=55 and beginning_cpf_oa[age-30]>withdrawals[age-30]:
-                beginning_cpf_oa[age-30] = beginning_cpf_oa[age-30]-withdrawals[age-30]
-                withdrawn_from.append(f'CPF OA')
-            # 2. SRS after age 62
-            elif age>=62 and beginning_equities_srs[age-30]>withdrawals[age-30]:
-                beginning_equities_srs[age-30] = beginning_equities_srs[age-30]-withdrawals[age-30]
-                withdrawn_from.append('SRS')
-            # 3. Cash otherwise
-            elif beginning_equities_cash[age-30]>withdrawals[age-30]:
-                beginning_equities_cash[age-30] = beginning_equities_cash[age-30]-withdrawals[age-30]
-                withdrawn_from.append('Cash Equities')
-            else:
-                withdrawn_from.append('INSUFFICIENT')
-
-        else: 
-            withdrawals.append(0)
-            withdrawn_from.append('-')
 
         # Generate portfolio returns
         returns_cash.append(beginning_cash[-1]*short_term_rate-beginning_cash[-1])
@@ -274,7 +254,50 @@ if st.button("Generate Portfolio Summary"):
         returns_cpf_sa.append(beginning_cpf_sa[-1]*cpf_sa_rate-beginning_cpf_sa[-1])
         returns_cpf_ma.append(beginning_cpf_ma[-1]*cpf_ma_rate-beginning_cpf_ma[-1])
         returns_total.append(returns_cash[-1]+returns_equities_cash[-1]+returns_equities_srs[-1]+returns_cpf_oa[-1]+returns_cpf_sa[-1]+returns_cpf_ma[-1])
-    
+        
+        # Generate withdrawals, with rules
+        if net_inflow[age-30]<0:
+            withdrawals_for_expense.append(-net_inflow[age-30])
+            # 1. CPF OA after age 55 and sufficient amount
+            if age>=55 and beginning_cpf_oa[age-30]>withdrawals_for_expense[age-30] and withdrawn_from[-1]!='SRS':
+                beginning_cpf_oa[age-30] = beginning_cpf_oa[age-30]-withdrawals_for_expense[age-30]
+                withdrawn_from.append(f'CPF OA')
+                withdrawals_to_cash_eq.append(0)
+            # 2. SRS after age 62, withdraw for 10 times only, what's unused goes into cash equities
+            elif age>=62 and beginning_equities_srs[age-30]>withdrawals_for_expense[age-30] and beginning_equities_srs[age-30]/srs_withdrawal_count>withdrawals_for_expense[age-30]:
+                # withdraw proportionate to the number of times left
+                withdrawals_to_cash_eq.append((beginning_equities_srs[age-30]/srs_withdrawal_count-withdrawals_for_expense[age-30]))
+                beginning_equities_cash[age-30] = beginning_equities_cash[age-30]+(beginning_equities_srs[age-30]/srs_withdrawal_count-withdrawals_for_expense[age-30])
+                beginning_equities_srs[age-30] = beginning_equities_srs[age-30]-beginning_equities_srs[age-30]/srs_withdrawal_count
+                srs_withdrawal_count -= 1
+                withdrawn_from.append('SRS')
+            # 3. enough for withdrawal but insufficient to divide proportionally
+            elif age>=62 and beginning_equities_srs[age-30]>withdrawals_for_expense[age-30]:
+                beginning_equities_srs[age-30] = beginning_equities_srs[age-30]-withdrawals_for_expense[age-30]
+                srs_withdrawal_count-=1
+                withdrawals_to_cash_eq.append(0)
+                withdrawn_from.append('SRS')
+            # 4. last srs withdrawal -> withdraw all
+            elif age>=62 and beginning_equities_srs[age-30]<2*withdrawals_for_expense[age-30] and srs_withdrawal_count>0:
+                beginning_equities_cash[age-30] = beginning_equities_cash[age-30]+(beginning_equities_srs[age-30]-withdrawals_for_expense[age-30])
+                beginning_equities_srs[age-30] = 0
+                srs_withdrawal_count-=1
+                withdrawals_to_cash_eq.append(beginning_equities_srs[age-30]-withdrawals_for_expense[age-30])
+                withdrawn_from.append('SRS')
+            # 4. Cash otherwise
+            elif beginning_equities_cash[age-30]>withdrawals_for_expense[age-30]:
+                beginning_equities_cash[age-30] = beginning_equities_cash[age-30]-withdrawals_for_expense[age-30]
+                withdrawn_from.append('Cash Equities')
+                withdrawals_to_cash_eq.append(0)
+            else:
+                withdrawn_from.append('INSUFFICIENT')
+                withdrawals_to_cash_eq.append(0)
+
+        else: 
+            withdrawals_for_expense.append(0)
+            withdrawals_to_cash_eq.append(0)
+            withdrawn_from.append('-')
+        
         # Generate ending balances
         ending_cash.append(beginning_cash[-1]*short_term_rate+contribute_st_inv[-1])
         ending_equities_cash.append(beginning_equities_cash[-1]*long_term_rate+contribute_lt_inv[-1])
@@ -296,21 +319,24 @@ if st.button("Generate Portfolio Summary"):
             if age<55 or beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]<max_frs[-1]: # below 55 or below frs, ma will contribute to sa
                 ending_cpf_sa.append((beginning_cpf_ma[-1]*cpf_ma_rate+contribute_cpf_ma_emp[-1]-max_bhs[-1])+beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1])
                 ending_cpf_oa.append(beginning_cpf_oa[-1]*cpf_oa_rate+contribute_cpf_oa_emp[-1])
-            else: # above 55 and frs hit, ma contribute to oa
+            else: # >=55 and frs hit, ma contribute to oa
                 ending_cpf_sa.append(max_frs[-1]) # takes frs value at 55, transferred to oa
                 transfer_sa_to_oa = beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]-max_frs[-1]
                 transfer_ma_to_oa = beginning_cpf_ma[-1]*cpf_ma_rate+contribute_cpf_ma_emp[-1]-max_bhs[-1]
                 ending_cpf_oa.append(transfer_sa_to_oa+transfer_ma_to_oa+beginning_cpf_oa[-1]*cpf_oa_rate+contribute_cpf_oa_emp[-1])
+        
         if beginning_cpf_sa[-1]*cpf_sa_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]>=max_frs[-1]: # max frs for the year
             first_frs_age.append(age+1)
+        
         ending_total.append(ending_cash[-1]+ending_equities_cash[-1]+ending_equities_srs[-1]+ending_cpf_oa[-1]+ending_cpf_sa[-1]+ending_cpf_ma[-1])
     
     
     # Create a DataFrame to display the results
     withdrawal_data = {'Age': ages,
-                        'Withdrawals': withdrawals,
+                        'For Expenses': withdrawals_for_expense,
+                        'Add to Cash Equities': withdrawals_to_cash_eq,
                         'Withdrawn from': withdrawn_from,
-                        'Withdrawal Rate': [a/b for a, b in zip(withdrawals, ending_total)],
+                        'Withdrawal Rate': [a/b for a, b in zip(withdrawals_for_expense, ending_total)],
                        }
     withdrawal_df = pd.DataFrame(withdrawal_data)
 
@@ -328,7 +354,8 @@ if st.button("Generate Portfolio Summary"):
             'CPF SA': beginning_cpf_sa,
             'CPF MA': beginning_cpf_ma,
             'Total Portfolio Value': beginning_total,
-            'Withdrawals': withdrawals,
+            'For Expenses': withdrawals_for_expense,
+            'Add to Cash Eq': withdrawals_to_cash_eq,
             'Withdrawn from': withdrawn_from,
             'E/E CPF OA': contribute_cpf_oa_emp,
             'E/E CPF SA': contribute_cpf_sa_emp,
@@ -356,11 +383,12 @@ if st.button("Generate Portfolio Summary"):
     df = pd.DataFrame(data)
 
     columns_with_beginning = pd.MultiIndex.from_product([["Beginning Balances"], df.columns[1:8]])
-    columns_with_mandatory = pd.MultiIndex.from_product([["Mandatory Contributions"], df.columns[10:13]])
-    columns_with_contributions = pd.MultiIndex.from_product([["Planned Contributions"], df.columns[13:18]])
-    columns_with_returns = pd.MultiIndex.from_product([["Portfolio Returns"], df.columns[18:25]])
-    columns_with_ending = pd.MultiIndex.from_product([["Ending Balances"], df.columns[25:]])
-    df.columns = pd.MultiIndex.from_tuples([("","Year/Age")] + list(columns_with_beginning)+[("","Withdrawals"),("","Withdrawn from")]+list(columns_with_mandatory)+list(columns_with_contributions)+list(columns_with_returns)+list(columns_with_ending))
+    columns_with_withdrawals = pd.MultiIndex.from_product([["Withdrawals"], df.columns[8:11]])
+    columns_with_mandatory = pd.MultiIndex.from_product([["Mandatory Contributions"], df.columns[11:14]])
+    columns_with_contributions = pd.MultiIndex.from_product([["Planned Contributions"], df.columns[14:19]])
+    columns_with_returns = pd.MultiIndex.from_product([["Portfolio Returns"], df.columns[19:26]])
+    columns_with_ending = pd.MultiIndex.from_product([["Ending Balances"], df.columns[26:]])
+    df.columns = pd.MultiIndex.from_tuples([("","Year/Age")] + list(columns_with_beginning)+list(columns_with_withdrawals)+list(columns_with_mandatory)+list(columns_with_contributions)+list(columns_with_returns)+list(columns_with_ending))
     
     # Remove Ending string from columns
     fixed_string = "Ending "
@@ -380,9 +408,10 @@ if st.button("Generate Portfolio Summary"):
     st.write("""
                 Projected Portfolio Value with assumptions:
                 1. Annual income inflates at 3% p.a.
-                2. Inflation also increases at 3% p.a. for all expenses.
+                2. Inflation increases at 3% p.a. for all expenses.
                 3. Total Net Inflow is after Expenses and does not include E/E CPF contribution.
-                4. Planned contributions assumed to be invested at the end of the year.
+                4. Planned contributions assumed to be invested at the end of the year and do not qualify for interests within the same year.
+                5. Withdrawal rules are in this order: first, CPF OA if after age 55 and sufficient amount, second, SRS if after age 62 and for 10 consecutive years (transferred to Cash Equities for unused amount), Cash Equities otherwise.
              """)
     
     pd.set_option('display.precision', 0)
@@ -399,7 +428,7 @@ if st.button("Generate Portfolio Summary"):
         df_selected.columns = df_selected.columns.droplevel()
         st.bar_chart(df_selected)
 
-        st.bar_chart(withdrawal_df, x="Age",y="Withdrawals")
+        st.bar_chart(withdrawal_df, x="Age",y="For Expenses")
         st.bar_chart(withdrawal_df, x="Age",y="Withdrawal Rate")
     with tab3:
         st.subheader("Your Projected BHS/FRS")
