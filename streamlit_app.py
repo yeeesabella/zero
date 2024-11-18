@@ -50,13 +50,32 @@ col3, col4 = st.columns(2)
 with col3:
     living_expenses = st.number_input("Living expenses", min_value=0, value=12000)
     insurance = st.number_input("Insurance", min_value=0,value=6000)
-    other_expenses = st.number_input("Other mandatory expenses", min_value=0, value=0, help="include any mortgage or debts you are currently making repayments for")
+    # other_expenses = st.number_input("Other mandatory expenses", min_value=0, value=0, help="include any mortgage or debts you are currently making repayments for")
     
 with col4:
     taxes = st.number_input("Taxes", min_value=0,value=5000)
     allowances = st.number_input("Allowances", min_value=0, value=4800)
 
-total_mandatory_expenses = living_expenses+insurance+taxes+allowances+other_expenses
+custom_expenses_dict = {}
+if "component_count" not in st.session_state:
+    st.session_state.component_count = 1
+
+def add_expenses():
+    st.session_state.component_count += 1
+
+# Button to add a new component
+if st.button("Add other expenses"):
+    add_expenses()
+
+for i in range(st.session_state.component_count):
+    if i>0:
+        with st.expander(f"Custom Expense {i}"):
+            
+            key = st.text_input(f"Custom Expense Name {i}")
+            value = st.number_input(f"Annual Expense Amount {i}",min_value = 0)
+            custom_expenses_dict[key] = value
+
+total_mandatory_expenses = living_expenses+insurance+taxes+allowances+sum(custom_expenses_dict.values())
 st.write(f"Your mandatory expenses amounts to ${total_mandatory_expenses}.")
 st.write(f"You have ${current_income-total_mandatory_expenses} remaining.")
 st.write(f"Based on these inputs, your investment/saving rate is {(1-total_mandatory_expenses/current_income)*100:.0f}%.")
@@ -66,14 +85,9 @@ st.write(f"Based on these inputs, your investment/saving rate is {(1-total_manda
 # col5, col6, col11 = st.columns(3)
 # with col5:
 #     travel = st.number_input("Travel budget", value=0)
-
 # with col6:
-#     from_age_cpf = st.number_input("From age", min_value=0,key="from_age_1")
-#     from_age_srs = st.number_input("From age", min_value=0,key="from_age_2")
 #     from_age_travel = st.number_input("From age", min_value=0,key="from_age_3")
 # with col11:
-#     to_age_cpf = st.number_input("To age", min_value=0,key="to_age_1")    
-#     to_age_srs = st.number_input("To age", min_value=0,key="to_age_2")
 #     to_age_travel = st.number_input("To age", min_value=0,key="to_age_3")
     
 # total_goals_expenses = srs+cpf_top_up+travel
@@ -96,20 +110,30 @@ adj_living_expenses = [living_expenses * ((1 + inflation_rate) ** i) for i in ra
 adj_insurance = [insurance * ((1 + inflation_rate) ** i) for i in range(years)]
 adj_taxes = [taxes * ((1 + inflation_rate) ** i) for i in range(years)]
 adj_allowances = [allowances * ((1 + inflation_rate) ** i) for i in range(years)]
-adj_other_expenses = [other_expenses * ((1 + inflation_rate) ** i) for i in range(years)]
 
+def create_dataframe(data_dict, num_rows):
+    df = pd.DataFrame({
+        key: [value * ((1+inflation_rate)**i) for i in range(num_rows)]
+        for key, value in data_dict.items()
+    })
+    return df
 
 # Create a DataFrame to display the results
-data = {'Age': ages, 'Total Inflow': total_inflow,
+fixed_data = {'Age': ages, 'Total Inflow': total_inflow,
         'Living Expenses': adj_living_expenses,
         'Taxes': adj_taxes,
         'Insurance': adj_insurance,
-        'Allowances': adj_allowances,
-        'Other Expenses': adj_other_expenses,
+        'Allowances': adj_allowances}
+custom_data = create_dataframe(custom_expenses_dict, years)
+total_data = {
         'Total Outflow': total_outflow,
         'Net Inflow': net_inflow}
-df = pd.DataFrame(data)
-df = df.set_index("Age")
+fixed_df = pd.DataFrame(fixed_data)
+total_df = pd.DataFrame(total_data)
+
+combined_df = pd.concat([fixed_df, custom_data, total_df], axis=1)
+
+combined_df = combined_df.set_index("Age")
 
 # Button to generate the table
 if st.button("Generate Cashflow Summary"):
@@ -122,8 +146,8 @@ if st.button("Generate Cashflow Summary"):
                 Note: -ve net inflow means that it needs to be compensated by portfolio returns/interests/drawdown.
              """)
     pd.set_option('display.precision', 0)
-    df = df.round(0)
-    st.dataframe(df)
+    combined_df = combined_df.round(0)
+    st.dataframe(combined_df)
 
 st.header("How will I be putting this net inflow to work while I'm working?")
 col7, col8 = st.columns(2)
