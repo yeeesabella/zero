@@ -80,8 +80,7 @@ for i in range(st.session_state.custom_expense_count):
             custom_expenses_dict[key] = amount
         with col2:
             # Each component gets its own "Remove" button
-            if st.button("Remove", key=f"remove_expense_{i}"):
-                remove_expenses()
+            st.button("Remove", key=f"remove_expense_{i}",on_click=remove_expenses)
 
 total_mandatory_expenses = living_expenses+insurance+taxes+allowances+sum(custom_expenses_dict.values())
 st.write(f"Your mandatory expenses amounts to ${total_mandatory_expenses}.")
@@ -199,18 +198,20 @@ with col10:
 custom_assets_amt_dict = {}
 
 if "custom_asset_count" not in st.session_state:
-    st.session_state.custom_asset_count = []
+    st.session_state.custom_asset_count = 1
 
 def add_assets():
-    st.session_state.custom_asset_count.append(len(st.session_state.custom_asset_count) + 1)
-def remove_assets(index):
-    st.session_state.custom_asset_count.pop(index)
+    st.session_state.custom_asset_count += 1
+    # st.session_state.custom_asset_count.append(len(st.session_state.custom_asset_count) + 1)
+def remove_assets():
+    st.session_state.custom_asset_count -= 1
+    # st.session_state.custom_asset_count.pop(index)
 
 # Button to add a new component
 st.button("Add custom assets", on_click=add_assets)
 
 # Display dynamic components with remove buttons
-for i, custom_asset_count in enumerate(st.session_state.custom_asset_count):
+for i in range(st.session_state.custom_asset_count):
     with st.expander(f"Custom Assets {i}", expanded=True):
         col1, col2 = st.columns([4, 1])
         with col1:
@@ -220,8 +221,7 @@ for i, custom_asset_count in enumerate(st.session_state.custom_asset_count):
             custom_assets_amt_dict[key] = [amount,growth_rate]
         with col2:
             # Each component gets its own "Remove" button
-            if st.button("Remove", key=f"remove_assets_{i}"):
-                remove_assets(i)
+            st.button("Remove", key=f"remove_assets_{i}",on_click=remove_assets)
 
 # Button to generate the table
 if st.button("Generate Portfolio Summary"):
