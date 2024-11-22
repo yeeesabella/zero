@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from sot import bhs_df, frs_df, cpf_allocation_by_age_df
 from datetime import datetime
+import streamlit as st
 
 st.title("Project 0️⃣")
 st.write(
@@ -18,7 +19,7 @@ col1, col2 = st.columns(2)
 # Taking range input from the user
 with col1:
     current_age = st.number_input("Current Age", min_value=0, value=30)
-    current_income = st.number_input("Annual Take-home Income", value=100000, help="include base, bonus and exclude employer+employee CPF contribution")
+    current_income = st.number_input("Annual Take-home Income", value=180000, help="include base, bonus and exclude employer+employee CPF contribution")
 
 with col2:
     future_age = st.number_input("Mortality Age", min_value=current_age + 1, value=95,help="when you expect to stop planning")
@@ -48,17 +49,17 @@ st.header("How much do I spend on the following mandatory expenses")
 col3, col4 = st.columns(2)
 # Taking range input from the user
 with col3:
-    living_expenses = st.number_input("Living expenses", min_value=0, value=12000)
+    living_expenses = st.number_input("Living expenses", min_value=0, value=20000)
     insurance = st.number_input("Insurance", min_value=0,value=6000)
     # other_expenses = st.number_input("Other mandatory expenses", min_value=0, value=0, help="include any mortgage or debts you are currently making repayments for")
 with col4:
-    taxes = st.number_input("Taxes", min_value=0,value=5000)
-    allowances = st.number_input("Allowances", min_value=0, value=4800)
+    taxes = st.number_input("Taxes", min_value=0,value=6000)
+    allowances = st.number_input("Allowances", min_value=0, value=7200)
 
 custom_expenses_dict = {}
 
 if "custom_expense_count" not in st.session_state:
-    st.session_state.custom_expense_count = 1
+    st.session_state.custom_expense_count = 0
 
 def add_expenses():
     # st.session_state.custom_expense_count.append(len(st.session_state.custom_expense_count) + 1)
@@ -175,30 +176,30 @@ col9, col10 = st.columns(2)
 # Taking range input from the user
 with col9:
     with st.expander(f"Cash (uninvested)", expanded=True): 
-        current_cash = st.number_input("Amount", min_value=0, value=150000, key='cash')
+        current_cash = st.number_input("Amount", min_value=0, value=140000, key='cash')
         cash_growth_rate = st.number_input("Growth Rate (%)",value=2.00, key='cash_gr')/100+1
     with st.expander(f"Equities in SRS", expanded=True): 
-        current_equities_in_srs = st.number_input("Amount", min_value=0, value=50000, key='srs_equities')
+        current_equities_in_srs = st.number_input("Amount", min_value=0, value=60000, key='srs_equities')
         srs_equities_growth_rate = st.number_input("Growth Rate (%)",value=6.00, key='srs_equities_gr')/100+1
     with st.expander(f"CPF SA", expanded=True): 
         current_cpf_sa = st.number_input("Amount", min_value=0, value=100000, key='cpf_sa')
         cpf_sa_growth_rate = st.number_input("Growth Rate (%)",value=4.00, key='cpf_sa_gr')/100+1
 with col10:
     with st.expander(f"Equities in Cash", expanded=True): 
-        current_equities_in_cash = st.number_input("Amount", min_value=0,value=30000, key='cash_equities')
+        current_equities_in_cash = st.number_input("Amount", min_value=0,value=37000, key='cash_equities')
         cash_equities_growth_rate = st.number_input("Growth Rate (%)",value=6.00, key='cash_equities_gr')/100+1
     with st.expander(f"CPF OA", expanded=True): 
         current_cpf_oa = st.number_input("Amount", min_value=0,value=70000, key='cpf_oa')
         cpf_oa_growth_rate = st.number_input("Growth Rate (%)",value=2.50, key='cpf_oa_gr')/100+1
     with st.expander(f"CPF MA", expanded=True): 
-        current_cpf_ma = st.number_input("Amount", min_value=0,value=70000, key='cpf_ma')
+        current_cpf_ma = st.number_input("Amount", min_value=0,value=71500, key='cpf_ma')
         cpf_ma_growth_rate = st.number_input("Growth Rate (%)",value=4.00, key='cpf_ma_gr')/100+1
 
 
 custom_assets_amt_dict = {}
 
 if "custom_asset_count" not in st.session_state:
-    st.session_state.custom_asset_count = 1
+    st.session_state.custom_asset_count = 0
 
 def add_assets():
     st.session_state.custom_asset_count += 1
@@ -393,7 +394,7 @@ if st.button("Generate Portfolio Summary"):
                 ending_cpf_oa.append(transfer_sa_to_oa+beginning_cpf_oa[-1]*cpf_oa_growth_rate+contribute_cpf_oa_emp[-1])
         else: # exceeds bhs
             ending_cpf_ma.append(max_bhs[-1])
-            first_bhs_age.append(age+1)
+            first_bhs_age.append(age)
             if age<55 or beginning_cpf_sa[-1]*cpf_sa_growth_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]<max_frs[-1]: # below 55 or below frs, ma will contribute to sa
                 ending_cpf_sa.append((beginning_cpf_ma[-1]*cpf_ma_growth_rate+contribute_cpf_ma_emp[-1]-max_bhs[-1])+beginning_cpf_sa[-1]*cpf_sa_growth_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1])
                 ending_cpf_oa.append(beginning_cpf_oa[-1]*cpf_oa_growth_rate+contribute_cpf_oa_emp[-1])
@@ -404,7 +405,7 @@ if st.button("Generate Portfolio Summary"):
                 ending_cpf_oa.append(transfer_sa_to_oa+transfer_ma_to_oa+beginning_cpf_oa[-1]*cpf_oa_growth_rate+contribute_cpf_oa_emp[-1])
         
         if beginning_cpf_sa[-1]*cpf_sa_growth_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]>=max_frs[-1]: # max frs for the year
-            first_frs_age.append(age+1)
+            first_frs_age.append(age)
         
         ending_total.append(ending_cash[-1]+ending_equities_cash[-1]+ending_equities_srs[-1]+ending_cpf_oa[-1]+ending_cpf_sa[-1]+ending_cpf_ma[-1])
     
