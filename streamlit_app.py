@@ -574,7 +574,7 @@ if st.button("Generate Portfolio Summary"):
     else: 
         insights = f"""
                     What this means...
-                    1. You do not have enough to drawdown on your portfolio/returns until age {future_age} or the withdrawal rules of CPF OA and/or SRS does not permit. At age {fire_age}, you will have ${beginning_total[fire_age-current_age]:,.0f} in portfolio value. Try increasing your income, lowering your expenses or work for longer. 
+                    1. You do not have enough to drawdown on your portfolio/returns until age {future_age} or the withdrawal rules of CPF OA and/or SRS does not permit. You will face insufficient funds from age {withdrawn_from.index('INSUFFICIENT')+30}. At age {fire_age}, you will have ${beginning_total[fire_age-current_age]:,.0f} in portfolio value. Try increasing your income, lowering your expenses or work for longer. 
                     2. At age {future_age}, you will have ${ending_total[-1]:,.0f} remaining.
                     3. {first_bhs_message} {bhs_info_message} {final_bhs_message}
                     4. {first_frs_message} {frs_info_message}
