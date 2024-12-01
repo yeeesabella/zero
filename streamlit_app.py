@@ -57,6 +57,7 @@ with col4:
     allowances = st.number_input("Allowances", min_value=0, value=7200)
 
 custom_expenses_dict = {}
+custom_expenses_years_dict = {}
 
 if "custom_expense_count" not in st.session_state:
     st.session_state.custom_expense_count = 0
@@ -78,7 +79,9 @@ for i in range(st.session_state.custom_expense_count):
         with col1:
             key = st.text_input("Custom Expense Name",key=f"expense_name_{i}")
             amount = st.number_input("Annual Expense Amount",min_value = 0,key=f"expense_amt_{i}")
+            years = st.number_input("Number of Years",min_value = 0,key=f"expense_years_{i}")
             custom_expenses_dict[key] = amount
+            custom_expenses_years_dict[key] = years-1
         with col2:
             # Each component gets its own "Remove" button
             st.button("Remove", key=f"remove_expense_{i}",on_click=remove_expenses)
@@ -119,20 +122,43 @@ adj_insurance = [insurance * ((1 + inflation_rate) ** i) for i in range(years)]
 adj_taxes = [taxes * ((1 + inflation_rate) ** i) for i in range(years)]
 adj_allowances = [allowances * ((1 + inflation_rate) ** i) for i in range(years)]
 
-def create_dataframe(data_dict, num_rows):
-    df = pd.DataFrame({
-        key: [value * ((1+inflation_rate)**i) for i in range(num_rows)]
-        for key, value in data_dict.items()
-    })
+def generate_inflation_dataframe(amount_dict, years_dict, num_rows, inflation_rate=inflation_rate):
+    """
+    Generate a DataFrame with amounts compounded by inflation over the years for each key.
+
+    Parameters:
+    amount_dict (dict): Dictionary with keys as item names and values as initial amounts.
+    years_dict (dict): Dictionary with keys as item names and values as years to apply inflation.
+    num_rows (int): Number of rows (years) to generate in the DataFrame.
+    inflation_rate (float): Annual inflation rate (default is 3%).
+
+    Returns:
+    pd.DataFrame: DataFrame with keys as columns, showing compounded amounts per year.
+    """
+    data = {}
+    
+    for key in amount_dict:
+        amounts = []
+        for year in range(num_rows):
+            if year <= years_dict[key]:  # Apply inflation within the specified number of years.
+                amount = amount_dict[key] * ((1 + inflation_rate) ** year)
+            else:  # Set to 0 after the specified years.
+                amount = 0
+            amounts.append(round(amount, 2))
+        data[key] = amounts
+
+    # Create DataFrame with only the item columns.
+    df = pd.DataFrame(data)
     return df
 
 # Create a DataFrame to display the results
 fixed_data = {'Age': ages, 'Total Inflow': total_inflow,
-        'Living Expenses': adj_living_expenses,
-        'Taxes': adj_taxes,
-        'Insurance': adj_insurance,
-        'Allowances': adj_allowances}
-custom_data = create_dataframe(custom_expenses_dict, years)
+                'Living Expenses': adj_living_expenses,
+                'Taxes': adj_taxes,
+                'Insurance': adj_insurance,
+                'Allowances': adj_allowances}
+custom_data = generate_inflation_dataframe(custom_expenses_dict, custom_expenses_years_dict, years)
+
 total_data = {
         'Total Outflow': total_outflow,
         'Net Inflow': net_inflow}
