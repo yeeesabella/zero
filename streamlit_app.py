@@ -13,19 +13,32 @@ st.write(
     """
 )
 
+# Initialize session state for the buttons
+if 'show_cashflow' not in st.session_state:
+    st.session_state['show_cashflow'] = False
+if 'show_projection' not in st.session_state:
+    st.session_state['show_projection'] = False
+
+# Function to reset button states (forces refresh when input changes)
+def reset_buttons_cashflow():
+    st.session_state['show_cashflow'] = False
+    st.session_state['show_projection'] = False
+def reset_buttons_projection():
+    st.session_state['show_projection'] = False
+
 st.header("My basic info")
 col1, col2 = st.columns(2)
 
 # Taking range input from the user
 with col1:
-    current_age = st.number_input("Current Age", min_value=0, value=30)
-    current_income = st.number_input("Annual Take-home Income", value=180000, help="include base, bonus and exclude employer+employee CPF contribution")
+    current_age = st.number_input("Current Age", min_value=0, value=30,on_change=lambda: reset_buttons_cashflow())
+    current_income = st.number_input("Annual Take-home Income", value=180000, help="include base, bonus and exclude employer+employee CPF contribution",on_change=lambda: reset_buttons_cashflow())
 
 with col2:
-    future_age = st.number_input("Mortality Age", min_value=current_age + 1, value=95,help="when you expect to stop planning")
-    cpf_contribution = st.number_input("Annual CPF Employer+Employee Contribution", min_value=0, value = 2516*12)
+    future_age = st.number_input("Mortality Age", min_value=current_age + 1, value=95,help="when you expect to stop planning",on_change=lambda: reset_buttons_cashflow())
+    cpf_contribution = st.number_input("Annual CPF Employer+Employee Contribution", min_value=0, value = 2516*12,on_change=lambda: reset_buttons_cashflow())
 
-fire_age = st.number_input("Check if I can retire at age...", min_value=0, value=40, help="what retirement means differ for everyone. you may not stop work completely but this checks if you will need to work for money ever again")
+fire_age = st.number_input("Check if I can retire at age...", min_value=0, value=40, help="what retirement means differ for everyone. you may not stop work completely but this checks if you will need to work for money ever again",on_change=lambda: reset_buttons_cashflow())
 
 # generate bhs, frs table based on current age
 # projected bhs 5%, frs 3.5%
@@ -49,12 +62,12 @@ st.header("How much do I spend on the following mandatory expenses")
 col3, col4 = st.columns(2)
 # Taking range input from the user
 with col3:
-    living_expenses = st.number_input("Living expenses", min_value=0, value=20000)
-    insurance = st.number_input("Insurance", min_value=0,value=6000)
+    living_expenses = st.number_input("Living expenses", min_value=0, value=20000,on_change=lambda: reset_buttons_cashflow())
+    insurance = st.number_input("Insurance", min_value=0,value=6000,on_change=lambda: reset_buttons_cashflow())
     # other_expenses = st.number_input("Other mandatory expenses", min_value=0, value=0, help="include any mortgage or debts you are currently making repayments for")
 with col4:
-    taxes = st.number_input("Taxes", min_value=0,value=6000)
-    allowances = st.number_input("Allowances", min_value=0, value=7200)
+    taxes = st.number_input("Taxes", min_value=0,value=6000,on_change=lambda: reset_buttons_cashflow())
+    allowances = st.number_input("Allowances", min_value=0, value=7200,on_change=lambda: reset_buttons_cashflow())
 
 custom_expenses_dict = {}
 custom_expenses_years_dict = {}
@@ -77,9 +90,9 @@ for i in range(st.session_state.custom_expense_count):
     with st.expander(f"Custom Expense {i}", expanded=True):
         col1, col2 = st.columns([4, 1])
         with col1:
-            key = st.text_input("Custom Expense Name",key=f"expense_name_{i}")
-            amount = st.number_input("Annual Expense Amount",min_value = 0,key=f"expense_amt_{i}")
-            years = st.number_input("Number of Years",min_value = 0,key=f"expense_years_{i}")
+            key = st.text_input("Custom Expense Name",key=f"expense_name_{i}",on_change=lambda: reset_buttons_cashflow())
+            amount = st.number_input("Annual Expense Amount",min_value = 0,key=f"expense_amt_{i}",on_change=lambda: reset_buttons_cashflow())
+            years = st.number_input("Number of Years",min_value = 0,key=f"expense_years_{i}",on_change=lambda: reset_buttons_cashflow())
             custom_expenses_dict[key] = amount
             custom_expenses_years_dict[key] = years-1
         with col2:
@@ -169,8 +182,9 @@ total_df = pd.DataFrame(total_data)
 combined_df = pd.concat([fixed_df, custom_data, total_df], axis=1)
 combined_df = combined_df.set_index("Age")
 
-# Button to generate the table
 if st.button("Generate Cashflow Summary"):
+    st.session_state['show_cashflow'] = True
+if st.session_state['show_cashflow']:
     # Display the table
     st.write("""
                 Projected Cashflows with assumptions:
@@ -186,11 +200,11 @@ if st.button("Generate Cashflow Summary"):
 st.header("How will I be putting this net inflow to work while I'm working?")
 col7, col8 = st.columns(2)
 with col7:
-    cpf_sa_top_up = st.number_input("CPF Cash Top Up", min_value=0, value=8000)    
-    long_term_inv = st.number_input("Long-term Investments", min_value=0, value=current_income-total_mandatory_expenses-8000-15300,help="assumed to be broad based index yielding 8% p.a.")
+    cpf_sa_top_up = st.number_input("CPF Cash Top Up", min_value=0, value=8000,on_change=lambda: reset_buttons_projection())    
+    long_term_inv = st.number_input("Long-term Investments", min_value=0, value=current_income-total_mandatory_expenses-8000-15300,help="assumed to be broad based index yielding 8% p.a.",on_change=lambda: reset_buttons_projection())
 with col8:
-    srs_top_up = st.number_input("SRS Top up", min_value=0, value=15300, help="assumed to be broad based index yielding 8% p.a.")
-    short_term_inv = st.number_input("Short-term Investments", min_value=0, value=0,help="HYSA, bonds, T-bills")
+    srs_top_up = st.number_input("SRS Top up", min_value=0, value=15300, help="assumed to be broad based index yielding 8% p.a.",on_change=lambda: reset_buttons_projection())
+    short_term_inv = st.number_input("Short-term Investments", min_value=0, value=0,help="HYSA, bonds, T-bills",on_change=lambda: reset_buttons_projection())
 
 total_expenses = total_mandatory_expenses+cpf_sa_top_up+long_term_inv+srs_top_up+short_term_inv
 st.write(f"You have ${current_income-total_expenses} remaining.")
@@ -203,24 +217,24 @@ col9, col10 = st.columns(2)
 # Taking range input from the user
 with col9:
     with st.expander(f"Cash (uninvested)", expanded=True): 
-        current_cash = st.number_input("Amount", min_value=0, value=140000, key='cash')
-        cash_growth_rate = st.number_input("Growth Rate (%)",value=2.00, key='cash_gr')/100+1
+        current_cash = st.number_input("Amount", min_value=0, value=140000, key='cash',on_change=lambda: reset_buttons_projection())
+        cash_growth_rate = st.number_input("Growth Rate (%)",value=2.00, key='cash_gr',on_change=lambda: reset_buttons_projection())/100+1
     with st.expander(f"Equities in SRS", expanded=True): 
-        current_equities_in_srs = st.number_input("Amount", min_value=0, value=60000, key='srs_equities')
-        srs_equities_growth_rate = st.number_input("Growth Rate (%)",value=6.00, key='srs_equities_gr')/100+1
+        current_equities_in_srs = st.number_input("Amount", min_value=0, value=60000, key='srs_equities',on_change=lambda: reset_buttons_projection())
+        srs_equities_growth_rate = st.number_input("Growth Rate (%)",value=6.00, key='srs_equities_gr',on_change=lambda: reset_buttons_projection())/100+1
     with st.expander(f"CPF SA", expanded=True): 
-        current_cpf_sa = st.number_input("Amount", min_value=0, value=100000, key='cpf_sa')
-        cpf_sa_growth_rate = st.number_input("Growth Rate (%)",value=4.00, key='cpf_sa_gr')/100+1
+        current_cpf_sa = st.number_input("Amount", min_value=0, value=100000, key='cpf_sa',on_change=lambda: reset_buttons_projection())
+        cpf_sa_growth_rate = st.number_input("Growth Rate (%)",value=4.00, key='cpf_sa_gr',on_change=lambda: reset_buttons_projection())/100+1
 with col10:
     with st.expander(f"Equities in Cash", expanded=True): 
-        current_equities_in_cash = st.number_input("Amount", min_value=0,value=37000, key='cash_equities')
-        cash_equities_growth_rate = st.number_input("Growth Rate (%)",value=6.00, key='cash_equities_gr')/100+1
+        current_equities_in_cash = st.number_input("Amount", min_value=0,value=37000, key='cash_equities',on_change=lambda: reset_buttons_projection())
+        cash_equities_growth_rate = st.number_input("Growth Rate (%)",value=6.00, key='cash_equities_gr',on_change=lambda: reset_buttons_projection())/100+1
     with st.expander(f"CPF OA", expanded=True): 
-        current_cpf_oa = st.number_input("Amount", min_value=0,value=70000, key='cpf_oa')
-        cpf_oa_growth_rate = st.number_input("Growth Rate (%)",value=2.50, key='cpf_oa_gr')/100+1
+        current_cpf_oa = st.number_input("Amount", min_value=0,value=70000, key='cpf_oa',on_change=lambda: reset_buttons_projection())
+        cpf_oa_growth_rate = st.number_input("Growth Rate (%)",value=2.50, key='cpf_oa_gr',on_change=lambda: reset_buttons_projection())/100+1
     with st.expander(f"CPF MA", expanded=True): 
-        current_cpf_ma = st.number_input("Amount", min_value=0,value=71500, key='cpf_ma')
-        cpf_ma_growth_rate = st.number_input("Growth Rate (%)",value=4.00, key='cpf_ma_gr')/100+1
+        current_cpf_ma = st.number_input("Amount", min_value=0,value=71500, key='cpf_ma',on_change=lambda: reset_buttons_projection())
+        cpf_ma_growth_rate = st.number_input("Growth Rate (%)",value=4.00, key='cpf_ma_gr',on_change=lambda: reset_buttons_projection())/100+1
 
 
 custom_assets_amt_dict = {}
@@ -243,9 +257,9 @@ for i in range(st.session_state.custom_asset_count):
     with st.expander(f"Custom Assets {i}", expanded=True):
         col1, col2 = st.columns([4, 1])
         with col1:
-            key = st.text_input(f"Custom Asset Name {i}")
-            amount = st.number_input(f"Asset Amount {i}",min_value = 0)
-            growth_rate = st.number_input(f"Growth Rate (%) {i}",value=0.00)/100+1
+            key = st.text_input(f"Custom Asset Name {i}",on_change=lambda: reset_buttons_projection())
+            amount = st.number_input(f"Asset Amount {i}",min_value = 0,on_change=lambda: reset_buttons_projection())
+            growth_rate = st.number_input(f"Growth Rate (%) {i}",value=0.00,on_change=lambda: reset_buttons_projection())/100+1
             custom_assets_amt_dict[key] = [amount,growth_rate]
         with col2:
             # Each component gets its own "Remove" button
@@ -253,6 +267,9 @@ for i in range(st.session_state.custom_asset_count):
 
 # Button to generate the table
 if st.button("Generate Portfolio Summary"):
+    st.session_state['show_projection'] = True
+
+if st.session_state['show_projection']:
     contribute_cpf_oa_emp, contribute_cpf_sa_emp, contribute_cpf_ma_emp = [], [], []
     contribute_cpf_sa_top_up, contribute_srs_top_up = [], []
     contribute_st_inv, contribute_lt_inv = [], []
@@ -358,37 +375,37 @@ if st.button("Generate Portfolio Summary"):
         returns_total.append(returns_cash[-1]+returns_equities_cash[-1]+returns_equities_srs[-1]+returns_cpf_oa[-1]+returns_cpf_sa[-1]+returns_cpf_ma[-1])
         
         # Generate withdrawals, with rules
-        if net_inflow[age-30]<0:
-            withdrawals_for_expense.append(-net_inflow[age-30])
+        if net_inflow[age-current_age]<0:
+            withdrawals_for_expense.append(-net_inflow[age-current_age])
             # 1. CPF OA after age 55 and sufficient amount
-            if age>=55 and beginning_cpf_oa[age-30]>withdrawals_for_expense[age-30] and withdrawn_from[-1]!='SRS':
-                beginning_cpf_oa[age-30] = beginning_cpf_oa[age-30]-withdrawals_for_expense[age-30]
+            if age>=55 and beginning_cpf_oa[age-current_age]>withdrawals_for_expense[age-current_age] and withdrawn_from[-1]!='SRS':
+                beginning_cpf_oa[age-current_age] = beginning_cpf_oa[age-current_age]-withdrawals_for_expense[age-current_age]
                 withdrawn_from.append(f'CPF OA')
                 withdrawals_to_cash_eq.append(0)
             # 2. SRS after age 62, withdraw for 10 times only, what's unused goes into cash equities
-            elif age>=62 and beginning_equities_srs[age-30]>withdrawals_for_expense[age-30] and beginning_equities_srs[age-30]/srs_withdrawal_count>withdrawals_for_expense[age-30]:
+            elif age>=62 and beginning_equities_srs[age-current_age]>withdrawals_for_expense[age-current_age] and beginning_equities_srs[age-current_age]/srs_withdrawal_count>withdrawals_for_expense[age-current_age]:
                 # withdraw proportionate to the number of times left
-                withdrawals_to_cash_eq.append((beginning_equities_srs[age-30]/srs_withdrawal_count-withdrawals_for_expense[age-30]))
-                beginning_equities_cash[age-30] = beginning_equities_cash[age-30]+(beginning_equities_srs[age-30]/srs_withdrawal_count-withdrawals_for_expense[age-30])
-                beginning_equities_srs[age-30] = beginning_equities_srs[age-30]-beginning_equities_srs[age-30]/srs_withdrawal_count
+                withdrawals_to_cash_eq.append((beginning_equities_srs[age-current_age]/srs_withdrawal_count-withdrawals_for_expense[age-current_age]))
+                beginning_equities_cash[age-current_age] = beginning_equities_cash[age-current_age]+(beginning_equities_srs[age-current_age]/srs_withdrawal_count-withdrawals_for_expense[age-current_age])
+                beginning_equities_srs[age-current_age] = beginning_equities_srs[age-current_age]-beginning_equities_srs[age-current_age]/srs_withdrawal_count
                 srs_withdrawal_count -= 1
                 withdrawn_from.append('SRS')
             # 3. enough for withdrawal but insufficient to divide proportionally
-            elif age>=62 and beginning_equities_srs[age-30]>withdrawals_for_expense[age-30]:
-                beginning_equities_srs[age-30] = beginning_equities_srs[age-30]-withdrawals_for_expense[age-30]
+            elif age>=62 and beginning_equities_srs[age-current_age]>withdrawals_for_expense[age-current_age]:
+                beginning_equities_srs[age-current_age] = beginning_equities_srs[age-current_age]-withdrawals_for_expense[age-current_age]
                 srs_withdrawal_count-=1
                 withdrawals_to_cash_eq.append(0)
                 withdrawn_from.append('SRS')
             # 4. last srs withdrawal -> withdraw all
-            elif age>=62 and beginning_equities_srs[age-30]<2*withdrawals_for_expense[age-30] and srs_withdrawal_count>0:
-                beginning_equities_cash[age-30] = beginning_equities_cash[age-30]+(beginning_equities_srs[age-30]-withdrawals_for_expense[age-30])
-                beginning_equities_srs[age-30] = 0
+            elif age>=62 and beginning_equities_srs[age-current_age]<2*withdrawals_for_expense[age-current_age] and srs_withdrawal_count>0:
+                beginning_equities_cash[age-current_age] = beginning_equities_cash[age-current_age]+(beginning_equities_srs[age-current_age]-withdrawals_for_expense[age-current_age])
+                beginning_equities_srs[age-current_age] = 0
                 srs_withdrawal_count-=1
-                withdrawals_to_cash_eq.append(beginning_equities_srs[age-30]-withdrawals_for_expense[age-30])
+                withdrawals_to_cash_eq.append(beginning_equities_srs[age-current_age]-withdrawals_for_expense[age-current_age])
                 withdrawn_from.append('SRS')
             # 4. Cash otherwise
-            elif beginning_equities_cash[age-30]>withdrawals_for_expense[age-30]:
-                beginning_equities_cash[age-30] = beginning_equities_cash[age-30]-withdrawals_for_expense[age-30]
+            elif beginning_equities_cash[age-current_age]>withdrawals_for_expense[age-current_age]:
+                beginning_equities_cash[age-current_age] = beginning_equities_cash[age-current_age]-withdrawals_for_expense[age-current_age]
                 withdrawn_from.append('Cash Equities')
                 withdrawals_to_cash_eq.append(0)
             else:
