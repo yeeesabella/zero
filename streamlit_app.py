@@ -119,7 +119,8 @@ total_outflow = [total_mandatory_expenses * ((1 + inflation_rate) ** i) for i in
 net_inflow = [a - b for a, b in zip(total_inflow, total_outflow)]
 adj_living_expenses = [living_expenses * ((1 + inflation_rate) ** i) for i in range(years)]
 adj_insurance = [insurance * ((1 + inflation_rate) ** i) for i in range(years)]
-adj_taxes = [taxes * ((1 + inflation_rate) ** i) for i in range(years)]
+# adj_taxes = [taxes * ((1 + inflation_rate) ** i) for i in range(years)]
+adj_taxes = [taxes * ((1 + inflation_rate) ** i) if i <= fire_age-current_age else 0 for i in range(years)]
 adj_allowances = [allowances * ((1 + inflation_rate) ** i) for i in range(years)]
 
 def generate_inflation_dataframe(amount_dict, years_dict, num_rows, inflation_rate=inflation_rate):
@@ -174,8 +175,8 @@ if st.button("Generate Cashflow Summary"):
     st.write("""
                 Projected Cashflows with assumptions:
                 1. Annual income inflates at 3% p.a.
-                2. Inflation also increases at 3% p.a. for all expenses.
-                3. Assumes no drastic changes in expenses.
+                2. All expenses inflates at the same 3% p.a.
+                3. Expense for taxes stops after you stop working.
                 Note: -ve net inflow means that it needs to be compensated by portfolio returns/interests/drawdown.
              """)
     pd.set_option('display.precision', 0)
