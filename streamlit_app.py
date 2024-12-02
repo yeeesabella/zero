@@ -683,3 +683,26 @@ if st.session_state['show_projection']:
             st.write(f"This increases your income from `${current_income:,.0f}` now to `${ideal_income:,.0f}`, which is a {(ideal_income/current_income-1)*100:.0f}% increase. It is important to maintain your current level of expenses as you earn more and avoid lifestyle inflation.")
             st.dataframe(ideal_expense_df)
 
+
+        # df_selected = df.loc[:, [("Ending Balances", "Total Portfolio Value")]]
+        # df_selected.columns = df_selected.columns.droplevel()
+        df_selected = df_selected.rename(columns={'Total Portfolio Value': 'Original Projection'})
+
+        ideal_age_df_selected = ideal_age_df.loc[:, [("Ending Balances", "Total Portfolio Value")]]
+        ideal_age_df_selected.columns = ideal_age_df_selected.columns.droplevel()
+        ideal_age_df_selected = ideal_age_df_selected.rename(columns={'Total Portfolio Value': 'Increase Retirement Age Simulation'})
+
+        ideal_expense_df_selected = ideal_expense_df.loc[:, [("Ending Balances", "Total Portfolio Value")]]
+        ideal_expense_df_selected.columns = ideal_expense_df_selected.columns.droplevel()
+        ideal_expense_df_selected = ideal_expense_df_selected.rename(columns={'Total Portfolio Value': 'Lowered Expense Simulation'})
+
+        ideal_income_df_selected = ideal_income_df.loc[:, [("Ending Balances", "Total Portfolio Value")]]
+        ideal_income_df_selected.columns = ideal_income_df_selected.columns.droplevel()
+        ideal_income_df_selected = ideal_income_df_selected.rename(columns={'Total Portfolio Value': 'Increase Income Simulation'})
+
+        simulated_df = pd.concat([df_selected,ideal_age_df_selected,ideal_expense_df_selected,ideal_income_df_selected], axis=1)
+        st.markdown("Comparison between Simulated Projections vs Original Projection")
+        st.line_chart(simulated_df)
+
+
+
