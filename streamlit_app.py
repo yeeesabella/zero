@@ -642,14 +642,44 @@ if st.session_state['show_projection']:
             if 'INSUFFICIENT' not in ideal_age_withdrawn_from: # means can fire!
                 ideal_age = age
                 break
+        for expense in range(total_mandatory_expenses,0,-1000):
+            ideal_expense = 0
+            ideal_expense_withdrawn_from, ideal_expense_df, ideal_expense_withdrawal_df, ideal_expense_max_cpf_df, ideal_expense_beginning_cpf_ma, ideal_expense_first_bhs_age, ideal_expense_first_frs_age, ideal_expense_beginning_total, ideal_expense_ending_total = simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_equities_in_cash,
+                 current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs,my_frs,cpf_contribution,
+                 cpf_allocation_by_age_df,cash_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
+                 cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,
+                 current_income,income_rate,expense,inflation_rate)
+
+            if 'INSUFFICIENT' not in ideal_expense_withdrawn_from: # means can fire!
+                ideal_expense = expense
+                break
+        for income in range(current_income,9999999999, 1000):
+            ideal_income = 0
+            ideal_income_withdrawn_from, ideal_income_df, ideal_income_withdrawal_df, ideal_income_max_cpf_df, ideal_income_beginning_cpf_ma, ideal_income_first_bhs_age, ideal_income_first_frs_age, ideal_income_beginning_total, ideal_income_ending_total = simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_equities_in_cash,
+                 current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs,my_frs,cpf_contribution,
+                 cpf_allocation_by_age_df,cash_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
+                 cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,
+                 income,income_rate,total_mandatory_expenses,inflation_rate)
+
+            if 'INSUFFICIENT' not in ideal_income_withdrawn_from: # means can fire!
+                ideal_income = income
+                break
         suggestions = f"""
-                        We have crunched the numbers and simulations, you may consider...
-                        1. Increasing your retirement age from {fire_age} to age {ideal_age}. 
-                        2. Lowering your expenses from $x now to $x.
-                        3. Increasing your income from $x now to $x. It is important to maintain your current level of expenses as you earn more and avoid lifestyle inflation.
+                        You may consider...
+                        1. Increasing your retirement age from {fire_age} to age {ideal_age} (keeping your expenses and income constant) OR
+                        2. Lowering your expenses from `${total_mandatory_expenses}` now to `${ideal_expense}` (keeping your retirement age and income constant) OR
+                        3. Increasing your income from `${current_income}` now to `${ideal_income}` (keeping your retirement age and expenses constant). 
+                        You may find the projection figures for each of these 3 options below. 
                         """
         st.info(suggestions, icon="💡")
         tab4, tab5, tab6 = st.tabs(["Option 1", "Option 2", "Option 3"])
         with tab4:
             st.write(f"This increases your retirement age from {fire_age} to age {ideal_age}. At age {ideal_age}, you will have ${ideal_age_beginning_total[ideal_age-current_age]:,.0f} in portfolio value. ")
             st.dataframe(ideal_age_df)
+        with tab5:
+            st.write(f"This reduces your expenses from `${total_mandatory_expenses}` now to `${ideal_expense}`, which is a reduction of {(1-ideal_expense/total_mandatory_expenses)*100:.0f}%. The reduced expenses is assumed to be allocated towards long term investments.")
+            st.dataframe(ideal_expense_df)
+        with tab6:
+            st.write(f"This increases your income from `${current_income}` now to `${ideal_income}`, which is a {(ideal_income/current_income-1)*100:.0f}% increase. It is important to maintain your current level of expenses as you earn more and avoid lifestyle inflation.")
+            st.dataframe(ideal_expense_df)
+
