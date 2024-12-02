@@ -667,8 +667,8 @@ if st.session_state['show_projection']:
         suggestions = f"""
                         You may consider...
                         1. Increasing your retirement age from {fire_age} to age {ideal_age} (keeping your expenses and income constant) OR
-                        2. Lowering your expenses from `${total_mandatory_expenses}` now to `${ideal_expense}` (keeping your retirement age and income constant) OR
-                        3. Increasing your income from `${current_income}` now to `${ideal_income}` (keeping your retirement age and expenses constant). 
+                        2. Lowering your expenses from `${total_mandatory_expenses:,.0f}` now to `${ideal_expense:,.0f}` (keeping your retirement age and income constant) OR
+                        3. Increasing your income from `${current_income:,.0f}` now to `${ideal_income:,.0f}` (keeping your retirement age and expenses constant). \n
                         You may find the projection figures for each of these 3 options below. 
                         """
         st.info(suggestions, icon="💡")
@@ -677,9 +677,9 @@ if st.session_state['show_projection']:
             st.write(f"This increases your retirement age from {fire_age} to age {ideal_age}. At age {ideal_age}, you will have ${ideal_age_beginning_total[ideal_age-current_age]:,.0f} in portfolio value. ")
             st.dataframe(ideal_age_df)
         with tab5:
-            st.write(f"This reduces your expenses from `${total_mandatory_expenses}` now to `${ideal_expense}`, which is a reduction of {(1-ideal_expense/total_mandatory_expenses)*100:.0f}%. The reduced expenses is assumed to be allocated towards long term investments.")
+            st.write(f"This reduces your expenses from `${total_mandatory_expenses:,.0f}` now to `${ideal_expense:,.0f}`, which is a reduction of {(1-ideal_expense/total_mandatory_expenses)*100:.0f}%. The reduced expenses is assumed to be allocated towards long term investments.")
             st.dataframe(ideal_expense_df)
         with tab6:
-            st.write(f"This increases your income from `${current_income}` now to `${ideal_income}`, which is a {(ideal_income/current_income-1)*100:.0f}% increase. It is important to maintain your current level of expenses as you earn more and avoid lifestyle inflation.")
+            st.write(f"This increases your income from `${current_income:,.0f}` now to `${ideal_income:,.0f}`, which is a {(ideal_income/current_income-1)*100:.0f}% increase. It is important to maintain your current level of expenses as you earn more and avoid lifestyle inflation.")
             st.dataframe(ideal_expense_df)
 
