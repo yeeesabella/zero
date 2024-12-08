@@ -105,7 +105,11 @@ for i in range(st.session_state.custom_expense_count):
 total_mandatory_expenses = living_expenses+insurance+taxes+allowances+sum(custom_expenses_dict.values())
 st.write(f"Your mandatory expenses amounts to ${total_mandatory_expenses}.")
 st.write(f"You have ${current_income-total_mandatory_expenses} remaining.")
-st.write(f"Based on these inputs, your investment/saving rate is {(1-total_mandatory_expenses/current_income)*100:.0f}%.")
+try:
+    st.write(f"Based on these inputs, your investment/saving rate is {(1-total_mandatory_expenses/current_income)*100:.0f}%.")
+except ZeroDivisionError:
+    st.write("")
+
 
 # st.header("Optional: What are some personal goals and plans I have made for my future?")
 # # to do: change to use LLM smart reading
