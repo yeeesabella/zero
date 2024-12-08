@@ -130,18 +130,18 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
                 beginning_equities_srs[age-current_age] = beginning_equities_srs[age-current_age]-beginning_equities_srs[age-current_age]/srs_withdrawal_count
                 srs_withdrawal_count -= 1
                 withdrawn_from.append('SRS')
-            # 3. enough for withdrawal but insufficient to divide proportionally
+            # 4. last srs withdrawal -> withdraw all
+            elif age>=62 and beginning_equities_srs[age-current_age]<2*withdrawals_for_expense[age-current_age] and srs_withdrawal_count>0 and beginning_equities_srs[age-current_age]>0:
+                beginning_equities_cash[age-current_age] = beginning_equities_cash[age-current_age]+(beginning_equities_srs[age-current_age]-withdrawals_for_expense[age-current_age])
+                srs_withdrawal_count-=1
+                withdrawals_to_cash_eq.append(beginning_equities_srs[age-current_age]-withdrawals_for_expense[age-current_age])
+                beginning_equities_srs[age-current_age] = 0
+                withdrawn_from.append('SRS')
+            # 3. SRS enough for withdrawal but insufficient to divide proportionally
             elif age>=62 and beginning_equities_srs[age-current_age]>withdrawals_for_expense[age-current_age]:
                 beginning_equities_srs[age-current_age] = beginning_equities_srs[age-current_age]-withdrawals_for_expense[age-current_age]
                 srs_withdrawal_count-=1
                 withdrawals_to_cash_eq.append(0)
-                withdrawn_from.append('SRS')
-            # 4. last srs withdrawal -> withdraw all
-            elif age>=62 and beginning_equities_srs[age-current_age]<2*withdrawals_for_expense[age-current_age] and srs_withdrawal_count>0:
-                beginning_equities_cash[age-current_age] = beginning_equities_cash[age-current_age]+(beginning_equities_srs[age-current_age]-withdrawals_for_expense[age-current_age])
-                beginning_equities_srs[age-current_age] = 0
-                srs_withdrawal_count-=1
-                withdrawals_to_cash_eq.append(beginning_equities_srs[age-current_age]-withdrawals_for_expense[age-current_age])
                 withdrawn_from.append('SRS')
             # 4. Cash otherwise
             elif beginning_equities_cash[age-current_age]>withdrawals_for_expense[age-current_age]:

@@ -350,6 +350,7 @@ if st.session_state['show_projection']:
                     4. {first_frs_message} {frs_info_message}
                     """
         st.success(insights, icon="🔥")
+        st.line_chart(df_selected)
     else: 
         insights = f"""
                     What this means...
