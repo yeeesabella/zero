@@ -11,10 +11,10 @@ import altair as alt
 st.title("Project 0️⃣")
 st.write(
     """
-    The tool aims to help with the accumulation and decumulation of your portfolio.
-    Step 1: By providing your current age, estimated mortality age, current income and expenses, it will generate a cashflow summary for every year from now to your mortality age including years where you have stopped working.
-    Step 2: By providing your current portfolio size, this projects if you could retire based on your current income and expenses, factoring in a fixed growth rate for your assets.
-    - If you are able to retire at the age you have specified, this would inform you of how much you would have at your mortality age. This aims to encourage you to spend more and die with zero.
+    The tool aims to help with the accumulation and decumulation of your portfolio.\n
+    Step 1: By providing your current age, estimated mortality age, current income and expenses, it will generate a cashflow summary for every year from now to your mortality age including years where you have stopped working. This highlights the shortfall you need to make up for in your portfolio returns when you retire.\n
+    Step 2: By providing your current portfolio size, it projects if you could retire based on your current income and expenses, factoring in a fixed growth rate for your assets.
+    - If you are able to retire at the age you have specified, this tool would inform you of how much you would have at your mortality age. This aims to encourage you to spend more to achieve the goal of building more memories, ultimately die with zero.
     - If you are unable to retire at the age you have specified, this tool would inform you of the changes you would need to make such as increasing your FIRE age, spending less or earning more.
 
     Hope this helps! ♡
