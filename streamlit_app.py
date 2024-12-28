@@ -11,8 +11,13 @@ import altair as alt
 st.title("Project 0️⃣")
 st.write(
     """
-    The goal is to help with the accumulation and decumulation of your portfolio.
-    This tool helps to estimate the earliest age you could retire based on your expenses, income and portfolio size.
+    The tool aims to help with the accumulation and decumulation of your portfolio.
+    Step 1: By providing your current age, estimated mortality age, current income and expenses, it will generate a cashflow summary for every year from now to your mortality age including years where you have stopped working.
+    Step 2: By providing your current portfolio size, this projects if you could retire based on your current income and expenses, factoring in a fixed growth rate for your assets.
+    - If you are able to retire at the age you have specified, this would inform you of how much you would have at your mortality age. This aims to encourage you to spend more and die with zero.
+    - If you are unable to retire at the age you have specified, this tool would inform you of the changes you would need to make such as increasing your FIRE age, spending less or earning more.
+
+    Hope this helps! ♡
     """
 )
 
@@ -41,7 +46,7 @@ with col2:
     future_age = st.number_input("Mortality Age", min_value=current_age + 1, value=95,help="when you expect to stop planning",on_change=lambda: reset_buttons_cashflow())
     cpf_contribution = st.number_input("Annual CPF Employer+Employee Contribution", min_value=0, value = 0,on_change=lambda: reset_buttons_cashflow())
 
-fire_age = st.number_input("Check if I can retire at age...", min_value=0, value=40, help="what retirement means differ for everyone. you may not stop work completely but this checks if you will need to work for money ever again",on_change=lambda: reset_buttons_cashflow())
+fire_age = st.number_input("I want to retire (FIRE) at age...", min_value=0, value=40, help="what retirement means differ for everyone. you may not stop work completely but this checks if you will need to work for money ever again",on_change=lambda: reset_buttons_cashflow())
 
 # generate bhs, frs table based on current age
 # projected bhs 5%, frs 3.5%
