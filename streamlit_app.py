@@ -13,7 +13,7 @@ st.write(
     """
     The tool aims to help with the accumulation and decumulation of your portfolio.\n
     Step 1: By providing your current age, estimated mortality age, current income and expenses, it will generate a cashflow summary for every year from now to your mortality age including years where you have stopped working. This highlights the shortfall you need to make up for in your portfolio returns when you retire.\n
-    Step 2: By providing your current portfolio size, it projects if you could retire based on your current income and expenses, factoring in a fixed growth rate for your assets.
+    Step 2: By providing your current portfolio size and planned contributions, it projects if you could retire based on your current income and expenses, factoring in a fixed growth rate for your assets.
     - If you are able to retire at the age you have specified, this tool would inform you of how much you would have at your mortality age. This aims to encourage you to spend more to achieve the goal of building more memories, ultimately die with zero.
     - If you are unable to retire at the age you have specified, this tool would inform you of the changes you would need to make such as increasing your FIRE age, spending less or earning more.
 
@@ -46,7 +46,7 @@ with col2:
     future_age = st.number_input("Mortality Age", min_value=current_age + 1, value=95,help="when you expect to stop planning",on_change=lambda: reset_buttons_cashflow())
     cpf_contribution = st.number_input("Annual CPF Employer+Employee Contribution", min_value=0, value = 0,on_change=lambda: reset_buttons_cashflow())
 
-fire_age = st.number_input("I want to retire (FIRE) at age...", min_value=0, value=40, help="what retirement means differ for everyone. you may not stop work completely but this checks if you will need to work for money ever again",on_change=lambda: reset_buttons_cashflow())
+fire_age = st.number_input("I aim to retire (FIRE) at age...", min_value=0, value=40, help="what retirement means differ for everyone. you may not stop work completely but this checks if you will need to work for money ever again",on_change=lambda: reset_buttons_cashflow())
 
 # generate bhs, frs table based on current age
 # projected bhs 5%, frs 3.5%
@@ -66,7 +66,7 @@ else:
     age_55_year = current_year - current_age + 55
     my_frs = int(frs_df[frs_df['year']==age_55_year]['FRS'])
 
-st.header("How much do I spend on the following mandatory expenses")
+st.header("Step 1: How much do I spend on the following mandatory expenses annually?")
 col3, col4 = st.columns(2)
 # Taking range input from the user
 with col3:
@@ -208,46 +208,68 @@ if st.session_state['show_cashflow']:
     combined_df = combined_df.round(0)
     st.dataframe(combined_df)
 
-st.header("How will I be putting this net inflow to work while I'm working?")
-col7, col8 = st.columns(2)
-with col7:
-    cpf_sa_top_up = st.number_input("CPF Cash Top Up", min_value=0, value=0,on_change=lambda: reset_buttons_projection())    
-    # current_income-total_mandatory_expenses-8000-15300
-    long_term_inv = st.number_input("Long-term Investments", min_value=0, value=0,help="assumed to be broad based index yielding 8% p.a.",on_change=lambda: reset_buttons_projection())
-with col8:
-    srs_top_up = st.number_input("SRS Top up", min_value=0, value=0, help="assumed to be broad based index yielding 8% p.a.",on_change=lambda: reset_buttons_projection())
-    short_term_inv = st.number_input("Short-term Investments", min_value=0, value=0,help="HYSA, bonds, T-bills",on_change=lambda: reset_buttons_projection())
+# st.header("How will I be putting this net inflow to work while I'm working?")
 
-total_expenses = total_mandatory_expenses+cpf_sa_top_up+long_term_inv+srs_top_up+short_term_inv
-st.write(f"You have ${current_income-total_expenses} remaining.")
-st.write("Please make sure this is $0.")
+st.header("Step 2: My current portfolio and how much do I plan to contribute to each bucket while I am working?")
+st.write(f"Remember: after your expenses indicated above, you have ${current_income-total_mandatory_expenses} remaining. You should plan to allocate them into one or more of these buckets.")
 
-
-st.header("My current portfolio")
-col9, col10 = st.columns(2)
-
-# Taking range input from the user
-with col9:
-    with st.expander(f"Cash (uninvested)", expanded=True): 
-        current_cash = st.number_input("Amount", min_value=0, value=0, key='cash',on_change=lambda: reset_buttons_projection())
+with st.expander(f"Cash (uninvested in savings account)", expanded=True): 
+    cash1, cash2, cash3 = st.columns(3)
+    with cash1:
+        current_cash = st.number_input("Current Amount", min_value=0, value=0, key='cash',on_change=lambda: reset_buttons_projection())
+    with cash2:
         cash_growth_rate = st.number_input("Growth Rate (%)",value=2.00, key='cash_gr',on_change=lambda: reset_buttons_projection())/100+1
-    with st.expander(f"Equities in SRS", expanded=True): 
-        current_equities_in_srs = st.number_input("Amount", min_value=0, value=0, key='srs_equities',on_change=lambda: reset_buttons_projection())
-        srs_equities_growth_rate = st.number_input("Growth Rate (%)",value=6.00, key='srs_equities_gr',on_change=lambda: reset_buttons_projection())/100+1
-    with st.expander(f"CPF SA", expanded=True): 
-        current_cpf_sa = st.number_input("Amount", min_value=0, value=0, key='cpf_sa',on_change=lambda: reset_buttons_projection())
-        cpf_sa_growth_rate = st.number_input("Growth Rate (%)",value=4.00, key='cpf_sa_gr',on_change=lambda: reset_buttons_projection())/100+1
-with col10:
-    with st.expander(f"Equities in Cash", expanded=True): 
-        current_equities_in_cash = st.number_input("Amount", min_value=0,value=0, key='cash_equities',on_change=lambda: reset_buttons_projection())
+    with cash3:
+        cash_top_up = st.number_input("Savings Account Contribution", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+with st.expander(f"Short-term Investments in Cash", expanded=True): 
+    st1, st2, st3 = st.columns(3)
+    with st1:
+        current_short_term_in_cash = st.number_input("Current Amount", min_value=0,value=0, key='cash_short_term',on_change=lambda: reset_buttons_projection())
+    with st2:
+        cash_short_term_growth_rate = st.number_input("Growth Rate (%)",value=3.00, key='cash_short_term_gr',on_change=lambda: reset_buttons_projection())/100+1
+    with st3:
+        short_term_inv = st.number_input("Short-term Contribution", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+with st.expander(f"Long-term Equities in Cash", expanded=True): 
+    lt1, lt2, lt3 = st.columns(3)
+    with lt1:
+        current_equities_in_cash = st.number_input("Current Amount", min_value=0,value=0, key='cash_equities',on_change=lambda: reset_buttons_projection())
+    with lt2:
         cash_equities_growth_rate = st.number_input("Growth Rate (%)",value=6.00, key='cash_equities_gr',on_change=lambda: reset_buttons_projection())/100+1
-    with st.expander(f"CPF OA", expanded=True): 
-        current_cpf_oa = st.number_input("Amount", min_value=0,value=0, key='cpf_oa',on_change=lambda: reset_buttons_projection())
-        cpf_oa_growth_rate = st.number_input("Growth Rate (%)",value=2.50, key='cpf_oa_gr',on_change=lambda: reset_buttons_projection())/100+1
-    with st.expander(f"CPF MA", expanded=True): 
-        current_cpf_ma = st.number_input("Amount", min_value=0,value=0, key='cpf_ma',on_change=lambda: reset_buttons_projection())
+    with lt3:
+        long_term_inv = st.number_input("Long-term Contribution", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+with st.expander(f"Equities in SRS", expanded=True): 
+    srs1,srs2,srs3 = st.columns(3)
+    with srs1:
+        current_equities_in_srs = st.number_input("Current Amount", min_value=0, value=0, key='srs_equities',on_change=lambda: reset_buttons_projection())
+    with srs2:
+        srs_equities_growth_rate = st.number_input("Growth Rate (%)",value=6.00, key='srs_equities_gr',on_change=lambda: reset_buttons_projection())/100+1
+    with srs3:
+        srs_top_up = st.number_input("SRS Top up", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+with st.expander(f"CPF MA", expanded=True): 
+    ma1,ma2,ma3 = st.columns(3)
+    with ma1:
+        current_cpf_ma = st.number_input("Current Amount", min_value=0,value=0, key='cpf_ma',on_change=lambda: reset_buttons_projection())
+    with ma2:
         cpf_ma_growth_rate = st.number_input("Growth Rate (%)",value=4.00, key='cpf_ma_gr',on_change=lambda: reset_buttons_projection())/100+1
-
+    with ma3:
+        cpf_ma_top_up = st.number_input("CPF MA Cash Top Up", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+with st.expander(f"CPF SA", expanded=True): 
+    sa1,sa2,sa3 = st.columns(3)
+    with sa1:
+        current_cpf_sa = st.number_input("Current Amount", min_value=0, value=0, key='cpf_sa',on_change=lambda: reset_buttons_projection())
+    with sa2:
+        cpf_sa_growth_rate = st.number_input("Growth Rate (%)",value=4.00, key='cpf_sa_gr',on_change=lambda: reset_buttons_projection())/100+1
+    with sa3:
+        cpf_sa_top_up = st.number_input("CPF SA Cash Top Up", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+with st.expander(f"CPF OA", expanded=True): 
+    oa1,oa2,oa3 = st.columns(3)
+    with oa1:
+        current_cpf_oa = st.number_input("Current Amount", min_value=0,value=0, key='cpf_oa',on_change=lambda: reset_buttons_projection())
+    with oa2:
+        cpf_oa_growth_rate = st.number_input("Growth Rate (%)",value=2.50, key='cpf_oa_gr',on_change=lambda: reset_buttons_projection())/100+1
+    with oa3:
+        st.write("No option to top up to OA directly.")
+    
 
 custom_assets_amt_dict = {}
 
@@ -267,35 +289,47 @@ st.button("Add custom assets", on_click=add_assets)
 # Display dynamic components with remove buttons
 for i in range(st.session_state.custom_asset_count):
     with st.expander(f"Custom Assets {i}", expanded=True):
-        col1, col2 = st.columns([4, 1])
+        col1, col2, col9, col10 = st.columns(4)
         with col1:
             key = st.text_input(f"Custom Asset Name {i}",on_change=lambda: reset_buttons_projection())
+        with col2:
             amount = st.number_input(f"Asset Amount {i}",min_value = 0,on_change=lambda: reset_buttons_projection())
+        with col9:
             growth_rate = st.number_input(f"Growth Rate (%) {i}",value=0.00,on_change=lambda: reset_buttons_projection())/100+1
             custom_assets_amt_dict[key] = [amount,growth_rate]
-        with col2:
+        with col10:
             # Each component gets its own "Remove" button
             st.button("Remove", key=f"remove_assets_{i}",on_click=remove_assets)
 
-# Button to generate the table
-if st.button("Generate Portfolio Summary"):
-    st.session_state['show_projection'] = True
+total_contribution = cash_top_up+long_term_inv+cpf_ma_top_up+short_term_inv+srs_top_up+cpf_sa_top_up
+st.write(f"""You have utilised \${(cash_top_up+long_term_inv+cpf_ma_top_up+short_term_inv+srs_top_up+cpf_sa_top_up)}.\
+         Amount remaining: \${(current_income-total_contribution-total_mandatory_expenses)}.
+         """)
 
+
+# Button to generate the table
+is_disabled = (current_income-total_contribution-total_mandatory_expenses) != 0 or (cash_top_up+long_term_inv+cpf_ma_top_up+short_term_inv+srs_top_up+cpf_sa_top_up) ==0
+
+if st.button("Generate Portfolio Summary",disabled=is_disabled):
+    st.session_state['show_projection'] = True
+if is_disabled:
+    st.write("Please make sure you have allocated some contributions into the buckets and the amount remaining is $0.")
 if st.session_state['show_projection']:
     # Display the table
-    st.write("""
-                Projected Portfolio Value with assumptions:
-                1. Annual income inflates at 3% p.a.
-                2. Inflation increases at 3% p.a. for all expenses.
-                3. Total Net Inflow is after Expenses and does not include E/E CPF contribution.
-                4. Planned contributions assumed to be invested at the end of the year and do not qualify for interests within the same year.
-                5. Withdrawal rules are in this order: first, CPF OA if after age 55 and sufficient amount, second, SRS if after age 62 and for 10 consecutive years (transferred to Cash Equities for unused amount), Cash Equities otherwise.
-                6. Custom assets are not added into total portfolio value because I'm not sure how it would affect the withdrawal rules... it is only indicated in the last columns.
-             """)
+    with st.expander(f"Portfolio Projection Assumptions", expanded=False): 
+        st.write("""
+                    1. Annual income inflates at 3% p.a.
+                    2. Inflation increases at 3% p.a. for all expenses.
+                    3. Total Net Inflow is after Expenses and does not include E/E CPF contribution.
+                    4. Planned contributions assumed to be invested at the end of the year and do not qualify for interests within the same year.
+                    5. Withdrawal rules are in this order: first, CPF OA if after age 55 and sufficient amount, second, SRS if after age 62 and for 10 consecutive years (transferred to Cash Equities for unused amount), Cash Equities otherwise.
+                    6. Custom assets are not added into total portfolio value because I'm not sure how it would affect the withdrawal rules... it is only indicated in the last columns.
+                """)
     withdrawn_from, df, withdrawal_df, max_cpf_df, beginning_cpf_ma, first_bhs_age, first_frs_age, beginning_total, ending_total = simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_equities_in_cash,
                  current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs,my_frs,cpf_contribution,
                  cpf_allocation_by_age_df,cash_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
                  cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,
+                #  cash_top_up,cpf_ma_top_up,
                  current_income,income_rate,total_mandatory_expenses,inflation_rate)
 
     tab1, tab2, tab3 = st.tabs(["Table", "Chart", "Appendix"])
@@ -377,6 +411,7 @@ if st.session_state['show_projection']:
                  current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs,my_frs,cpf_contribution,
                  cpf_allocation_by_age_df,cash_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
                  cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,
+                #  cash_top_up,cpf_ma_top_up,
                  current_income,income_rate,total_mandatory_expenses,inflation_rate)
 
             if 'INSUFFICIENT' not in ideal_age_withdrawn_from: # means can fire!
@@ -388,6 +423,7 @@ if st.session_state['show_projection']:
                  current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs,my_frs,cpf_contribution,
                  cpf_allocation_by_age_df,cash_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
                  cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,
+                #  cash_top_up,cpf_ma_top_up,
                  current_income,income_rate,expense,inflation_rate)
 
             if 'INSUFFICIENT' not in ideal_expense_withdrawn_from: # means can fire!
@@ -399,6 +435,7 @@ if st.session_state['show_projection']:
                  current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs,my_frs,cpf_contribution,
                  cpf_allocation_by_age_df,cash_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
                  cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,
+                #  cash_top_up,cpf_ma_top_up,
                  income,income_rate,total_mandatory_expenses,inflation_rate)
 
             if 'INSUFFICIENT' not in ideal_income_withdrawn_from: # means can fire!

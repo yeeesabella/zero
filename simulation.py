@@ -4,15 +4,16 @@ import numpy as np
 def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_equities_in_cash,
                  current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs,my_frs,cpf_contribution,
                  cpf_allocation_by_age_df,cash_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
-                 cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,
+                 cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,
+                 srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,
                  current_income,income_rate,total_mandatory_expenses,inflation_rate):
     
     total_inflow = [current_income * ((1 + income_rate) ** i) if i <= fire_age-current_age else 0 for i in range(years)]
     total_outflow = [total_mandatory_expenses * ((1 + inflation_rate) ** i) for i in range(years)]
     net_inflow = [a - b for a, b in zip(total_inflow, total_outflow)]
     contribute_cpf_oa_emp, contribute_cpf_sa_emp, contribute_cpf_ma_emp = [], [], []
-    contribute_cpf_sa_top_up, contribute_srs_top_up = [], []
-    contribute_st_inv, contribute_lt_inv = [], []
+    contribute_cpf_sa_top_up, contribute_cpf_ma_top_up, contribute_srs_top_up = [], [], []
+    contribute_st_inv, contribute_lt_inv, contribute_cash_top_up = [], [], []
 
     returns_cash, returns_equities_cash, returns_equities_srs = [], [], []
     returns_cpf_oa, returns_cpf_sa, returns_cpf_ma = [], [], []
@@ -75,10 +76,14 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
         
         # generate top up amounts based on age and working years
         if current_age <= age <= fire_age:
-            cpf_oa_emp = cpf_contribution*float(cpf_allocation_by_age_df[(cpf_allocation_by_age_df['Start Age']<=age)&(cpf_allocation_by_age_df['End Age']>=age)]['OA %'])
-            cpf_sa_emp = cpf_contribution*float(cpf_allocation_by_age_df[(cpf_allocation_by_age_df['Start Age']<=age)&(cpf_allocation_by_age_df['End Age']>=age)]['SA %'])
-            cpf_ma_emp = cpf_contribution*float(cpf_allocation_by_age_df[(cpf_allocation_by_age_df['Start Age']<=age)&(cpf_allocation_by_age_df['End Age']>=age)]['MA %'])
+            # cpf_oa_emp = 0.6217
+            # cpf_sa_emp = 0.1621
+            # cpf_ma_emp = 0.2162
+            cpf_oa_emp = cpf_contribution*float(cpf_allocation_by_age_df[(cpf_allocation_by_age_df['Start Age']<=age)&(cpf_allocation_by_age_df['End Age']>=age)]['OA %'].iloc[0])
+            cpf_sa_emp = cpf_contribution*float(cpf_allocation_by_age_df[(cpf_allocation_by_age_df['Start Age']<=age)&(cpf_allocation_by_age_df['End Age']>=age)]['SA %'].iloc[0])
+            cpf_ma_emp = cpf_contribution*float(cpf_allocation_by_age_df[(cpf_allocation_by_age_df['Start Age']<=age)&(cpf_allocation_by_age_df['End Age']>=age)]['MA %'].iloc[0])
             srs_top_up = srs_top_up
+            # cash_top_up = cash_top_up
             long_term_inv = long_term_inv
             short_term_inv = short_term_inv
         else: 
@@ -86,9 +91,11 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
             cpf_sa_emp = 0
             cpf_ma_emp = 0
             srs_top_up = 0
+            # cash_top_up = 0
             long_term_inv = 0
             short_term_inv = 0
         
+        # todo: top up until hit FRS... remaining goes into equities cash....
         if age <= 35:
             cpf_sa_top_up = cpf_sa_top_up
         else: 
@@ -99,6 +106,8 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
         contribute_cpf_ma_emp.append(cpf_ma_emp)
         contribute_srs_top_up.append(srs_top_up)
         contribute_cpf_sa_top_up.append(cpf_sa_top_up)
+        # contribute_cpf_ma_top_up.append(cpf_ma_top_up)
+        # contribute_cash_top_up.append(cash_top_up)
         contribute_st_inv.append(short_term_inv)
         # contribute_lt_inv.append(long_term_inv)
         
@@ -228,8 +237,10 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
             'E/E CPF OA': contribute_cpf_oa_emp,
             'E/E CPF SA': contribute_cpf_sa_emp,
             'E/E CPF MA': contribute_cpf_ma_emp,
+            # 'Top up CPF MA': contribute_cpf_ma_top_up,
             'Top up CPF SA': contribute_cpf_sa_top_up,
             'Top up SRS': contribute_srs_top_up,
+            # 'Top up Cash Savings': contribute_cash_top_up,
             'LT Cash Investments ': contribute_lt_inv,
             'ST Cash Investments': contribute_st_inv,
             'Total Net Inflow': net_inflow,
