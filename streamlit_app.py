@@ -183,13 +183,13 @@ if st.button("Generate Cashflow Summary"):
     st.session_state['show_cashflow'] = True
 if st.session_state['show_cashflow']:
     # Display the table
-    st.write("""
-                Projected Cashflows with assumptions:
-                1. Annual income inflates at 3% p.a.
-                2. All expenses inflates at the same 3% p.a.
-                3. Expense for taxes stops after you stop working.
-                Note: -ve net inflow means that it needs to be compensated by portfolio returns/interests/drawdown.
-             """)
+    with st.expander(f"Projected Cashflows Assumptions:", expanded=False): 
+        st.write("""
+                    1. Annual income inflates at 3% p.a.
+                    2. All expenses inflates at the same 3% p.a.
+                    3. Expense for taxes stops after you stop working.
+                    Note: -ve net inflow means that it needs to be compensated by portfolio returns/interests/drawdown.
+                """)
     pd.set_option('display.precision', 0)
     combined_df = combined_df.round(0)
     st.dataframe(combined_df)
@@ -206,7 +206,8 @@ with st.expander(f"Cash (uninvested in savings account)", expanded=True):
     with cash2:
         cash_growth_rate = st.number_input("Growth Rate (%)",value=2.00, key='cash_gr',on_change=lambda: reset_buttons_projection())/100+1
     with cash3:
-        cash_top_up = st.number_input("Savings Account Contribution (fixed every year)", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+        cash_top_up = st.number_input("Savings Account Contribution", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+        st.write("*Fixed every year*")
 with st.expander(f"Short-term Investments in Cash", expanded=True): 
     st1, st2, st3 = st.columns(3)
     with st1:
@@ -214,7 +215,8 @@ with st.expander(f"Short-term Investments in Cash", expanded=True):
     with st2:
         cash_short_term_growth_rate = st.number_input("Growth Rate (%)",value=3.00, key='cash_short_term_gr',on_change=lambda: reset_buttons_projection())/100+1
     with st3:
-        short_term_inv = st.number_input("Short-term Contribution (by proportion)", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+        short_term_inv = st.number_input("Short-term Contribution", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+        st.write("*Allocated in proportion to the short-term and long-term amounts every year*")
 with st.expander(f"Long-term Equities in Cash", expanded=True): 
     lt1, lt2, lt3 = st.columns(3)
     with lt1:
@@ -222,7 +224,8 @@ with st.expander(f"Long-term Equities in Cash", expanded=True):
     with lt2:
         cash_equities_growth_rate = st.number_input("Growth Rate (%)",value=6.00, key='cash_equities_gr',on_change=lambda: reset_buttons_projection())/100+1
     with lt3:
-        long_term_inv = st.number_input("Long-term Contribution (by proportion)", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+        long_term_inv = st.number_input("Long-term Contribution", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+        st.write("*Allocated in proportion to the short-term and long-term amounts every year*")
 with st.expander(f"Equities in SRS", expanded=True): 
     srs1,srs2,srs3 = st.columns(3)
     with srs1:
@@ -230,7 +233,8 @@ with st.expander(f"Equities in SRS", expanded=True):
     with srs2:
         srs_equities_growth_rate = st.number_input("Growth Rate (%)",value=6.00, key='srs_equities_gr',on_change=lambda: reset_buttons_projection())/100+1
     with srs3:
-        srs_top_up = st.number_input("SRS Top Up (fixed every year)", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+        srs_top_up = st.number_input("SRS Top Up", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+        st.write("*Fixed every year*")
 with st.expander(f"CPF MA", expanded=True): 
     ma1,ma2,ma3 = st.columns(3)
     with ma1:
@@ -238,8 +242,9 @@ with st.expander(f"CPF MA", expanded=True):
     with ma2:
         cpf_ma_growth_rate = st.number_input("Growth Rate (%)",value=4.00, key='cpf_ma_gr',on_change=lambda: reset_buttons_projection())/100+1
     with ma3:
-        cpf_ma_top_up = st.number_input("CPF MA Cash Top Up (fixed every year)", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
-        st.write("Note: Top up will happen until BHS is met for the year. Thereafter, money will be allocated to ST/LT investments based on proportion indicated above.")
+        cpf_ma_top_up = st.number_input("CPF MA Cash Top Up", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+        st.write("*Fixed every year*")
+    st.write("Note: Any top up will happen until BHS is met for the year. Thereafter, money will be allocated to ST/LT investments based on proportion indicated above.")
 with st.expander(f"CPF SA", expanded=True): 
     sa1,sa2,sa3 = st.columns(3)
     with sa1:
@@ -247,8 +252,9 @@ with st.expander(f"CPF SA", expanded=True):
     with sa2:
         cpf_sa_growth_rate = st.number_input("Growth Rate (%)",value=4.00, key='cpf_sa_gr',on_change=lambda: reset_buttons_projection())/100+1
     with sa3:
-        cpf_sa_top_up = st.number_input("CPF SA Cash Top Up (fixed every year)", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
-        st.write("Note: Top up will happen until FRS is met for the year. Thereafter, money will be allocated to ST/LT investments based on proportion indicated above.")
+        cpf_sa_top_up = st.number_input("CPF SA Cash Top Up", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+        st.write("*Fixed every year*")
+    st.write("Note: Any top up up will happen until FRS is met for the year. Thereafter, money will be allocated to ST/LT investments based on proportion indicated above.")
 with st.expander(f"CPF OA", expanded=True): 
     oa1,oa2,oa3 = st.columns(3)
     with oa1:
@@ -310,7 +316,7 @@ if st.session_state['show_projection']:
                     2. Inflation increases at 3% p.a. for all expenses.
                     3. Total Net Inflow is after Expenses and does not include E/E CPF contribution.
                     4. Planned contributions assumed to be invested at the end of the year and do not qualify for interests within the same year.
-                    5. Withdrawal rules are in this order: first, CPF OA if after age 55 and sufficient amount, second, SRS if after age 62 and for 10 consecutive years (transferred to Cash Equities for unused amount), Cash Equities otherwise.
+                    5. Withdrawal rules are in this order: first, CPF OA if after age 55 and sufficient amount, second, SRS if after age 62 and for 10 consecutive years (transferred to Short-term Cash for unused amount), followed by Cash Equities then Short-term Cash.
                     6. Custom assets are not added into total portfolio value because I'm not sure how it would affect the withdrawal rules... it is only indicated in the last columns.
                 """)
     withdrawn_from, df, withdrawal_df, max_cpf_df, beginning_cpf_ma, first_bhs_age, first_frs_age, beginning_total, ending_total = simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_short_term_in_cash,current_equities_in_cash,
