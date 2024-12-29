@@ -108,10 +108,10 @@ for i in range(st.session_state.custom_expense_count):
             st.button("Remove", key=f"remove_expense_{i}",on_click=remove_expenses)
 
 total_mandatory_expenses = living_expenses+insurance+taxes+allowances+sum(custom_expenses_dict.values())
-st.write(f"Your mandatory expenses amounts to ${total_mandatory_expenses}.")
-st.write(f"You have ${current_income-total_mandatory_expenses} remaining.")
+st.write(f"Your mandatory expenses amounts to `${total_mandatory_expenses:,.0f}`.")
+st.write(f"You have `${(current_income-total_mandatory_expenses):,.0f}` remaining.")
 try:
-    st.write(f"Based on these inputs, your investment/saving rate is {(1-total_mandatory_expenses/current_income)*100:.0f}%.")
+    st.write(f"Based on these inputs, your investment/saving rate is `{(1-total_mandatory_expenses/current_income)*100:.0f}%`.")
 except ZeroDivisionError:
     st.write("")
 
@@ -187,6 +187,7 @@ if st.session_state['show_cashflow']:
                     1. Annual income inflates at 3% p.a.
                     2. All expenses inflates at the same 3% p.a.
                     3. Expense for taxes stops after you stop working.
+
                     Note: -ve net inflow means that it needs to be compensated by portfolio returns/interests/drawdown.
                 """)
     pd.set_option('display.precision', 0)
@@ -194,7 +195,7 @@ if st.session_state['show_cashflow']:
     st.dataframe(combined_df)
 
 st.header("Step 2: My current portfolio and how much do I plan to contribute to each bucket while I am working?")
-st.write(f"Remember: after your expenses indicated above, you have ${current_income-total_mandatory_expenses} remaining. You should plan to allocate them into one or more of these buckets.")
+st.write(f"Remember: after your expenses indicated above, you have `${(current_income-total_mandatory_expenses):,.0f}` remaining. You should plan to allocate them into one or more of these buckets.")
 
 with st.expander(f"Cash (uninvested in savings account)", expanded=True): 
     cash1, cash2, cash3 = st.columns(3)
@@ -293,8 +294,8 @@ for i in range(st.session_state.custom_asset_count):
             st.button("Remove", key=f"remove_assets_{i}",on_click=remove_assets)
 
 total_contribution = cash_top_up+long_term_inv+cpf_ma_top_up+short_term_inv+srs_top_up+cpf_sa_top_up
-st.write(f"""You have utilised \${(cash_top_up+long_term_inv+cpf_ma_top_up+short_term_inv+srs_top_up+cpf_sa_top_up)}.\
-         Amount remaining: \${(current_income-total_contribution-total_mandatory_expenses)}.
+st.write(f"""You have utilised `${(cash_top_up+long_term_inv+cpf_ma_top_up+short_term_inv+srs_top_up+cpf_sa_top_up):,.0f}`.
+         Amount remaining: `${(current_income-total_contribution-total_mandatory_expenses):,.0f}`.
          """)
 
 
@@ -304,7 +305,7 @@ is_disabled = (current_income-total_contribution-total_mandatory_expenses) != 0 
 if st.button("Generate Portfolio Summary",disabled=is_disabled):
     st.session_state['show_projection'] = True
 if is_disabled:
-    st.write("Please make sure you have allocated some contributions into the buckets and the amount remaining is $0.")
+    st.write("Please make sure you have allocated some contributions into the buckets and the amount remaining is `$0`.")
 if st.session_state['show_projection']:
     # Display the table
     with st.expander(f"Portfolio Projection Assumptions", expanded=False): 
