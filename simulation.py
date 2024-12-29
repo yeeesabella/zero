@@ -243,7 +243,7 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
             'CPF MA': beginning_cpf_ma,
             'Total Portfolio Value': beginning_total,
             'For Expenses': withdrawals_for_expense,
-            'Add to Cash Eq': withdrawals_to_cash_st,
+            'Add to Short-term Cash': withdrawals_to_cash_st,
             'Withdrawn from': withdrawn_from,
             'E/E CPF OA': contribute_cpf_oa_emp,
             'E/E CPF SA': contribute_cpf_sa_emp,

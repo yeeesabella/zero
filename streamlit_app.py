@@ -182,7 +182,7 @@ if st.button("Generate Cashflow Summary"):
     st.session_state['show_cashflow'] = True
 if st.session_state['show_cashflow']:
     # Display the table
-    with st.expander(f"Projected Cashflows Assumptions:", expanded=False): 
+    with st.expander(f"Projected Cashflows Assumptions", expanded=False): 
         st.write("""
                     1. Annual income inflates at 3% p.a.
                     2. All expenses inflates at the same 3% p.a.
@@ -308,14 +308,14 @@ if is_disabled:
     st.write("Please make sure you have allocated some contributions into the buckets and the amount remaining is `$0`.")
 if st.session_state['show_projection']:
     # Display the table
-    with st.expander(f"Portfolio Projection Assumptions", expanded=False): 
+    with st.expander(f"Projected Portfolio Assumptions", expanded=False): 
         st.write("""
                     1. Annual income inflates at 3% p.a.
                     2. Inflation increases at 3% p.a. for all expenses.
                     3. Total Net Inflow is after Expenses and does not include E/E CPF contribution.
                     4. Planned contributions assumed to be invested at the end of the year and do not qualify for interests within the same year.
                     5. Withdrawal rules are in this order: first, CPF OA if after age 55 and sufficient amount, second, SRS if after age 62 and for 10 consecutive years (transferred to Short-term Cash for unused amount), followed by Cash Equities then Short-term Cash.
-                    6. Custom assets are not added into total portfolio value because I'm not sure how it would affect the withdrawal rules... it is only indicated in the last columns.
+                    6. Custom assets are not added into total portfolio value because I'm not sure how it would affect the withdrawal rules... it is only indicated in the last columns for reference.
                 """)
     withdrawn_from, df, withdrawal_df, max_cpf_df, beginning_cpf_ma, first_bhs_age, first_frs_age, beginning_total, ending_total = simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_short_term_in_cash,current_equities_in_cash,
                  current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs,my_frs,cpf_contribution,
@@ -331,7 +331,7 @@ if st.session_state['show_projection']:
         # Plot chart
         df_selected = df.loc[:, [("Ending Balances", "Total Portfolio Value")]]
         df_selected.columns = df_selected.columns.droplevel()
-        st.bar_chart(df_selected)
+        st.bar_chart(df_selected,y="Total Portfolio Value")
 
         st.bar_chart(withdrawal_df, x="Age",y="For Expenses")
         st.bar_chart(withdrawal_df, x="Age",y="Withdrawal Rate")
@@ -486,7 +486,7 @@ if st.session_state['show_projection']:
             x='Year/Age',
             y='Total Portfolio Value',
             color=alt.Color('Projection Type:N', scale=color_scale), # Legend will be based on this column
-            tooltip=['Year/Age', 'Total Portfolio Value', 'Projection Type']
+            tooltip=['Year/Age', 'Total Portfolio Value', 'Projection Type', 'Withdrawn from']
         )
         
         # Create the highlight chart for "INSUFFICIENT" points
