@@ -45,7 +45,6 @@ with col1:
 with col2:
     future_age = st.number_input("Mortality Age", min_value=current_age + 1, value=95,help="when you expect to stop planning",on_change=lambda: reset_buttons_cashflow())
     cpf_contribution = st.number_input("Annual CPF Employer+Employee Contribution", min_value=0, value = 0,on_change=lambda: reset_buttons_cashflow())
-    st.write(f"Suggested based on income and age: $xx") #todo
 
 fire_age = st.number_input("I aim to retire (FIRE) at age...", min_value=0, value=40, help="what retirement means differ for everyone. you may not stop work completely but this checks if you will need to work for money ever again",on_change=lambda: reset_buttons_cashflow())
 
@@ -194,15 +193,13 @@ if st.session_state['show_cashflow']:
     combined_df = combined_df.round(0)
     st.dataframe(combined_df)
 
-# st.header("How will I be putting this net inflow to work while I'm working?")
-
 st.header("Step 2: My current portfolio and how much do I plan to contribute to each bucket while I am working?")
 st.write(f"Remember: after your expenses indicated above, you have ${current_income-total_mandatory_expenses} remaining. You should plan to allocate them into one or more of these buckets.")
 
 with st.expander(f"Cash (uninvested in savings account)", expanded=True): 
     cash1, cash2, cash3 = st.columns(3)
     with cash1:
-        current_cash = st.number_input("Current Amount", min_value=0, value=150000, key='cash',on_change=lambda: reset_buttons_projection())
+        current_cash = st.number_input("Current Amount", min_value=0, value=0, key='cash',on_change=lambda: reset_buttons_projection())
     with cash2:
         cash_growth_rate = st.number_input("Growth Rate (%)",value=2.00, key='cash_gr',on_change=lambda: reset_buttons_projection())/100+1
     with cash3:
@@ -220,7 +217,7 @@ with st.expander(f"Short-term Investments in Cash", expanded=True):
 with st.expander(f"Long-term Equities in Cash", expanded=True): 
     lt1, lt2, lt3 = st.columns(3)
     with lt1:
-        current_equities_in_cash = st.number_input("Current Amount", min_value=0,value=50000, key='cash_equities',on_change=lambda: reset_buttons_projection())
+        current_equities_in_cash = st.number_input("Current Amount", min_value=0,value=0, key='cash_equities',on_change=lambda: reset_buttons_projection())
     with lt2:
         cash_equities_growth_rate = st.number_input("Growth Rate (%)",value=6.00, key='cash_equities_gr',on_change=lambda: reset_buttons_projection())/100+1
     with lt3:
@@ -229,7 +226,7 @@ with st.expander(f"Long-term Equities in Cash", expanded=True):
 with st.expander(f"Equities in SRS", expanded=True): 
     srs1,srs2,srs3 = st.columns(3)
     with srs1:
-        current_equities_in_srs = st.number_input("Current Amount", min_value=0, value=60000, key='srs_equities',on_change=lambda: reset_buttons_projection())
+        current_equities_in_srs = st.number_input("Current Amount", min_value=0, value=0, key='srs_equities',on_change=lambda: reset_buttons_projection())
     with srs2:
         srs_equities_growth_rate = st.number_input("Growth Rate (%)",value=6.00, key='srs_equities_gr',on_change=lambda: reset_buttons_projection())/100+1
     with srs3:
@@ -238,7 +235,7 @@ with st.expander(f"Equities in SRS", expanded=True):
 with st.expander(f"CPF MA", expanded=True): 
     ma1,ma2,ma3 = st.columns(3)
     with ma1:
-        current_cpf_ma = st.number_input("Current Amount", min_value=0,value=71500, key='cpf_ma',on_change=lambda: reset_buttons_projection())
+        current_cpf_ma = st.number_input("Current Amount", min_value=0,value=0, key='cpf_ma',on_change=lambda: reset_buttons_projection())
     with ma2:
         cpf_ma_growth_rate = st.number_input("Growth Rate (%)",value=4.00, key='cpf_ma_gr',on_change=lambda: reset_buttons_projection())/100+1
     with ma3:
@@ -248,7 +245,7 @@ with st.expander(f"CPF MA", expanded=True):
 with st.expander(f"CPF SA", expanded=True): 
     sa1,sa2,sa3 = st.columns(3)
     with sa1:
-        current_cpf_sa = st.number_input("Current Amount", min_value=0, value=100000, key='cpf_sa',on_change=lambda: reset_buttons_projection())
+        current_cpf_sa = st.number_input("Current Amount", min_value=0, value=0, key='cpf_sa',on_change=lambda: reset_buttons_projection())
     with sa2:
         cpf_sa_growth_rate = st.number_input("Growth Rate (%)",value=4.00, key='cpf_sa_gr',on_change=lambda: reset_buttons_projection())/100+1
     with sa3:
@@ -258,7 +255,7 @@ with st.expander(f"CPF SA", expanded=True):
 with st.expander(f"CPF OA", expanded=True): 
     oa1,oa2,oa3 = st.columns(3)
     with oa1:
-        current_cpf_oa = st.number_input("Current Amount", min_value=0,value=80000, key='cpf_oa',on_change=lambda: reset_buttons_projection())
+        current_cpf_oa = st.number_input("Current Amount", min_value=0,value=0, key='cpf_oa',on_change=lambda: reset_buttons_projection())
     with oa2:
         cpf_oa_growth_rate = st.number_input("Growth Rate (%)",value=2.50, key='cpf_oa_gr',on_change=lambda: reset_buttons_projection())/100+1
     with oa3:
