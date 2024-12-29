@@ -39,12 +39,13 @@ col1, col2 = st.columns(2)
 
 # Taking range input from the user
 with col1:
-    current_age = st.number_input("Current Age", min_value=0, value=0,on_change=lambda: reset_buttons_cashflow())
-    current_income = st.number_input("Annual Take-home Income", value=0, help="include base, bonus and exclude employer+employee CPF contribution",on_change=lambda: reset_buttons_cashflow())
+    current_age = st.number_input("Current Age", min_value=0, value=30,on_change=lambda: reset_buttons_cashflow())
+    current_income = st.number_input("Annual Take-home Income", value=100000, help="include base, bonus and exclude employer+employee CPF contribution",on_change=lambda: reset_buttons_cashflow())
 
 with col2:
     future_age = st.number_input("Mortality Age", min_value=current_age + 1, value=95,help="when you expect to stop planning",on_change=lambda: reset_buttons_cashflow())
     cpf_contribution = st.number_input("Annual CPF Employer+Employee Contribution", min_value=0, value = 0,on_change=lambda: reset_buttons_cashflow())
+    st.write(f"Suggested based on income and age: $xx") #todo
 
 fire_age = st.number_input("I aim to retire (FIRE) at age...", min_value=0, value=40, help="what retirement means differ for everyone. you may not stop work completely but this checks if you will need to work for money ever again",on_change=lambda: reset_buttons_cashflow())
 
@@ -114,21 +115,6 @@ try:
     st.write(f"Based on these inputs, your investment/saving rate is {(1-total_mandatory_expenses/current_income)*100:.0f}%.")
 except ZeroDivisionError:
     st.write("")
-
-
-# st.header("Optional: What are some personal goals and plans I have made for my future?")
-# # to do: change to use LLM smart reading
-# col5, col6, col11 = st.columns(3)
-# with col5:
-#     travel = st.number_input("Travel budget", value=0)
-# with col6:
-#     from_age_travel = st.number_input("From age", min_value=0,key="from_age_3")
-# with col11:
-#     to_age_travel = st.number_input("To age", min_value=0,key="to_age_3")
-    
-# total_goals_expenses = srs+cpf_top_up+travel
-# st.write(f"Your goals and plans amount to ${total_goals_expenses}.")
-# st.write(f"You have ${current_income-total_mandatory_expenses-total_goals_expenses} remaining.")
 
 # Constants
 inflation_rate = 0.03
@@ -216,11 +202,11 @@ st.write(f"Remember: after your expenses indicated above, you have ${current_inc
 with st.expander(f"Cash (uninvested in savings account)", expanded=True): 
     cash1, cash2, cash3 = st.columns(3)
     with cash1:
-        current_cash = st.number_input("Current Amount", min_value=0, value=0, key='cash',on_change=lambda: reset_buttons_projection())
+        current_cash = st.number_input("Current Amount", min_value=0, value=150000, key='cash',on_change=lambda: reset_buttons_projection())
     with cash2:
         cash_growth_rate = st.number_input("Growth Rate (%)",value=2.00, key='cash_gr',on_change=lambda: reset_buttons_projection())/100+1
     with cash3:
-        cash_top_up = st.number_input("Savings Account Contribution", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+        cash_top_up = st.number_input("Savings Account Contribution (fixed every year)", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
 with st.expander(f"Short-term Investments in Cash", expanded=True): 
     st1, st2, st3 = st.columns(3)
     with st1:
@@ -228,43 +214,45 @@ with st.expander(f"Short-term Investments in Cash", expanded=True):
     with st2:
         cash_short_term_growth_rate = st.number_input("Growth Rate (%)",value=3.00, key='cash_short_term_gr',on_change=lambda: reset_buttons_projection())/100+1
     with st3:
-        short_term_inv = st.number_input("Short-term Contribution", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+        short_term_inv = st.number_input("Short-term Contribution (by proportion)", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
 with st.expander(f"Long-term Equities in Cash", expanded=True): 
     lt1, lt2, lt3 = st.columns(3)
     with lt1:
-        current_equities_in_cash = st.number_input("Current Amount", min_value=0,value=0, key='cash_equities',on_change=lambda: reset_buttons_projection())
+        current_equities_in_cash = st.number_input("Current Amount", min_value=0,value=50000, key='cash_equities',on_change=lambda: reset_buttons_projection())
     with lt2:
         cash_equities_growth_rate = st.number_input("Growth Rate (%)",value=6.00, key='cash_equities_gr',on_change=lambda: reset_buttons_projection())/100+1
     with lt3:
-        long_term_inv = st.number_input("Long-term Contribution", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+        long_term_inv = st.number_input("Long-term Contribution (by proportion)", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
 with st.expander(f"Equities in SRS", expanded=True): 
     srs1,srs2,srs3 = st.columns(3)
     with srs1:
-        current_equities_in_srs = st.number_input("Current Amount", min_value=0, value=0, key='srs_equities',on_change=lambda: reset_buttons_projection())
+        current_equities_in_srs = st.number_input("Current Amount", min_value=0, value=60000, key='srs_equities',on_change=lambda: reset_buttons_projection())
     with srs2:
         srs_equities_growth_rate = st.number_input("Growth Rate (%)",value=6.00, key='srs_equities_gr',on_change=lambda: reset_buttons_projection())/100+1
     with srs3:
-        srs_top_up = st.number_input("SRS Top up", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+        srs_top_up = st.number_input("SRS Top Up (fixed every year)", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
 with st.expander(f"CPF MA", expanded=True): 
     ma1,ma2,ma3 = st.columns(3)
     with ma1:
-        current_cpf_ma = st.number_input("Current Amount", min_value=0,value=0, key='cpf_ma',on_change=lambda: reset_buttons_projection())
+        current_cpf_ma = st.number_input("Current Amount", min_value=0,value=71500, key='cpf_ma',on_change=lambda: reset_buttons_projection())
     with ma2:
         cpf_ma_growth_rate = st.number_input("Growth Rate (%)",value=4.00, key='cpf_ma_gr',on_change=lambda: reset_buttons_projection())/100+1
     with ma3:
-        cpf_ma_top_up = st.number_input("CPF MA Cash Top Up", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+        cpf_ma_top_up = st.number_input("CPF MA Cash Top Up (fixed every year)", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+        st.write("Note: Top up will happen until BHS is met for the year. Thereafter, money will be allocated to ST/LT investments based on proportion indicated above.")
 with st.expander(f"CPF SA", expanded=True): 
     sa1,sa2,sa3 = st.columns(3)
     with sa1:
-        current_cpf_sa = st.number_input("Current Amount", min_value=0, value=0, key='cpf_sa',on_change=lambda: reset_buttons_projection())
+        current_cpf_sa = st.number_input("Current Amount", min_value=0, value=100000, key='cpf_sa',on_change=lambda: reset_buttons_projection())
     with sa2:
         cpf_sa_growth_rate = st.number_input("Growth Rate (%)",value=4.00, key='cpf_sa_gr',on_change=lambda: reset_buttons_projection())/100+1
     with sa3:
-        cpf_sa_top_up = st.number_input("CPF SA Cash Top Up", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+        cpf_sa_top_up = st.number_input("CPF SA Cash Top Up (fixed every year)", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
+        st.write("Note: Top up will happen until FRS is met for the year. Thereafter, money will be allocated to ST/LT investments based on proportion indicated above.")
 with st.expander(f"CPF OA", expanded=True): 
     oa1,oa2,oa3 = st.columns(3)
     with oa1:
-        current_cpf_oa = st.number_input("Current Amount", min_value=0,value=0, key='cpf_oa',on_change=lambda: reset_buttons_projection())
+        current_cpf_oa = st.number_input("Current Amount", min_value=0,value=80000, key='cpf_oa',on_change=lambda: reset_buttons_projection())
     with oa2:
         cpf_oa_growth_rate = st.number_input("Growth Rate (%)",value=2.50, key='cpf_oa_gr',on_change=lambda: reset_buttons_projection())/100+1
     with oa3:
@@ -325,11 +313,11 @@ if st.session_state['show_projection']:
                     5. Withdrawal rules are in this order: first, CPF OA if after age 55 and sufficient amount, second, SRS if after age 62 and for 10 consecutive years (transferred to Cash Equities for unused amount), Cash Equities otherwise.
                     6. Custom assets are not added into total portfolio value because I'm not sure how it would affect the withdrawal rules... it is only indicated in the last columns.
                 """)
-    withdrawn_from, df, withdrawal_df, max_cpf_df, beginning_cpf_ma, first_bhs_age, first_frs_age, beginning_total, ending_total = simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_equities_in_cash,
+    withdrawn_from, df, withdrawal_df, max_cpf_df, beginning_cpf_ma, first_bhs_age, first_frs_age, beginning_total, ending_total = simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_short_term_in_cash,current_equities_in_cash,
                  current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs,my_frs,cpf_contribution,
-                 cpf_allocation_by_age_df,cash_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
-                 cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,
-                #  cash_top_up,cpf_ma_top_up,
+                 cpf_allocation_by_age_df,cash_growth_rate,cash_short_term_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
+                 cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,
+                 srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,cash_top_up,cpf_ma_top_up,
                  current_income,income_rate,total_mandatory_expenses,inflation_rate)
 
     tab1, tab2, tab3 = st.tabs(["Table", "Chart", "Appendix"])
@@ -407,11 +395,10 @@ if st.session_state['show_projection']:
         
         for age in range(fire_age,future_age):
             ideal_age = 0
-            ideal_age_withdrawn_from, ideal_age_df, ideal_age_withdrawal_df, ideal_age_max_cpf_df, ideal_age_beginning_cpf_ma, ideal_age_first_bhs_age, ideal_age_first_frs_age, ideal_age_beginning_total, ideal_age_ending_total = simulate_age(current_age,age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_equities_in_cash,
+            ideal_age_withdrawn_from, ideal_age_df, ideal_age_withdrawal_df, ideal_age_max_cpf_df, ideal_age_beginning_cpf_ma, ideal_age_first_bhs_age, ideal_age_first_frs_age, ideal_age_beginning_total, ideal_age_ending_total = simulate_age(current_age,age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_short_term_in_cash,current_equities_in_cash,
                  current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs,my_frs,cpf_contribution,
-                 cpf_allocation_by_age_df,cash_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
-                 cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,
-                #  cash_top_up,cpf_ma_top_up,
+                 cpf_allocation_by_age_df,cash_growth_rate,cash_short_term_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
+                 cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,cash_top_up,cpf_ma_top_up,
                  current_income,income_rate,total_mandatory_expenses,inflation_rate)
 
             if 'INSUFFICIENT' not in ideal_age_withdrawn_from: # means can fire!
@@ -419,11 +406,10 @@ if st.session_state['show_projection']:
                 break
         for expense in range(total_mandatory_expenses,0,-1000):
             ideal_expense = 0
-            ideal_expense_withdrawn_from, ideal_expense_df, ideal_expense_withdrawal_df, ideal_expense_max_cpf_df, ideal_expense_beginning_cpf_ma, ideal_expense_first_bhs_age, ideal_expense_first_frs_age, ideal_expense_beginning_total, ideal_expense_ending_total = simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_equities_in_cash,
+            ideal_expense_withdrawn_from, ideal_expense_df, ideal_expense_withdrawal_df, ideal_expense_max_cpf_df, ideal_expense_beginning_cpf_ma, ideal_expense_first_bhs_age, ideal_expense_first_frs_age, ideal_expense_beginning_total, ideal_expense_ending_total = simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_short_term_in_cash,current_equities_in_cash,
                  current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs,my_frs,cpf_contribution,
-                 cpf_allocation_by_age_df,cash_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
-                 cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,
-                #  cash_top_up,cpf_ma_top_up,
+                 cpf_allocation_by_age_df,cash_growth_rate,cash_short_term_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
+                 cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,cash_top_up,cpf_ma_top_up,
                  current_income,income_rate,expense,inflation_rate)
 
             if 'INSUFFICIENT' not in ideal_expense_withdrawn_from: # means can fire!
@@ -431,11 +417,10 @@ if st.session_state['show_projection']:
                 break
         for income in range(current_income,9999999999, 1000):
             ideal_income = 0
-            ideal_income_withdrawn_from, ideal_income_df, ideal_income_withdrawal_df, ideal_income_max_cpf_df, ideal_income_beginning_cpf_ma, ideal_income_first_bhs_age, ideal_income_first_frs_age, ideal_income_beginning_total, ideal_income_ending_total = simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_equities_in_cash,
+            ideal_income_withdrawn_from, ideal_income_df, ideal_income_withdrawal_df, ideal_income_max_cpf_df, ideal_income_beginning_cpf_ma, ideal_income_first_bhs_age, ideal_income_first_frs_age, ideal_income_beginning_total, ideal_income_ending_total = simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_short_term_in_cash,current_equities_in_cash,
                  current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs,my_frs,cpf_contribution,
-                 cpf_allocation_by_age_df,cash_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
-                 cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,
-                #  cash_top_up,cpf_ma_top_up,
+                 cpf_allocation_by_age_df,cash_growth_rate,cash_short_term_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
+                 cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,cash_top_up,cpf_ma_top_up,
                  income,income_rate,total_mandatory_expenses,inflation_rate)
 
             if 'INSUFFICIENT' not in ideal_income_withdrawn_from: # means can fire!
