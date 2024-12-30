@@ -44,3 +44,54 @@ cpf_allocation_by_age = { 'Start Age': age_start,
                         }
 
 cpf_allocation_by_age_df = pd.DataFrame(cpf_allocation_by_age)
+
+
+# IRAS tax bracket for SRS Withdrawal
+def calculate_tax(income):
+    # Tax brackets and rates for Singapore (2023)
+    tax_brackets = [
+        (20000, 0),
+        (30000, 0.02),  # 0-20,000
+        (40000, 0.035),  # 20,001-30,000
+        (80000, 0.07),  # 30,001-40,000
+        (120000, 0.115),  # 40,001-80,000
+        (160000, 0.15),  # 80,001-120,000
+        (200000, 0.18),  # 120,001-160,000
+        (240000, 0.19),  # 160,001-200,000
+        (280000, 0.195),  # 200,001-240,000
+        (320000, 0.20),  # 240,001-280,000
+        (500000, 0.22),  # 280,001-320,000
+        (1000000, 0.23),  # 320,001-500,000
+        (float('inf'), 0.24)  # 1m and above
+    ]
+
+    income = income/2
+    tax_payable = 0
+    prev_limit = 0
+
+    for limit, rate in tax_brackets:
+        if income > limit:
+            tax_payable += (limit - prev_limit) * rate
+            prev_limit = limit
+        else:
+            tax_payable += (income - prev_limit) * rate
+            break
+
+    return tax_payable
+
+def calculate_pre_tax(post_tax_amount, tolerance=1e-6):
+    # Initial bounds for bisection
+    low = post_tax_amount
+    high = post_tax_amount * 2  # Start with an upper bound of 2 times y (adjust if necessary)
+
+    while high - low > tolerance:
+        mid = (low + high) / 2
+        tax = calculate_tax(mid)
+        post_tax_income = mid - tax
+
+        if post_tax_income < post_tax_amount:
+            low = mid
+        else:
+            high = mid
+
+    return (low + high) / 2

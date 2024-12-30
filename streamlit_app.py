@@ -1,17 +1,18 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sot import bhs_df, frs_df, cpf_allocation_by_age_df
+from sot import bhs_df, frs_df, cpf_allocation_by_age_df, calculate_pre_tax,calculate_tax
 from datetime import datetime
 import streamlit as st
 from simulation import simulate_age
 import altair as alt
 
 st.set_page_config(page_title="Die with Zero")
+
 st.title("Project 0️⃣")
 st.write(
     """
-    This is a localised Singapore-based tool that aims to help with the accumulation and decumulation of your portfolio, by considering Singapore-specific aspect of your financially planning such as CPF and SRS.\n
+    This is a Singapore-based tool that aims to help with the accumulation and decumulation of your portfolio, by considering Singapore-specific aspect of your financially planning such as CPF and SRS.\n
     Step 1: By providing your current age, estimated mortality age, current income and expenses, it will generate a cashflow summary for every year from now to your mortality age including years where you have stopped working. This highlights the shortfall you need to make up for in your portfolio returns when you retire.\n
     Step 2: By providing your current portfolio size and planned contributions, it projects if you could retire based on your current income and expenses, factoring in a fixed growth rate for your assets and withdrawal rules associated with CPF and SRS.
     - If you are able to retire at the age you have specified, this tool would inform you of how much you would have at your mortality age. This aims to encourage you to spend more to achieve the goal of building more memories, ultimately die with zero.
@@ -45,14 +46,16 @@ with col2:
     future_age = st.number_input("Mortality Age", min_value=current_age + 1, value=95,help="when you expect to stop planning",on_change=lambda: reset_buttons_cashflow())
 
 
-is_monthly_income = st.toggle("Enter monthly amount", value=True)
+is_monthly_income = st.toggle("Enter monthly amount",key="income_toggle")
 col5, col6 = st.columns(2)
 with col5:
-    current_income = st.number_input("Take-home Income", value=100000, help="include base, bonus and exclude employer+employee CPF contribution",on_change=lambda: reset_buttons_cashflow())
-    current_income = current_income*12
+    current_income = st.number_input("Take-home Income", value=0, help="include base, bonus and exclude employer+employee CPF contribution",on_change=lambda: reset_buttons_cashflow())
+    if is_monthly_income:
+        current_income = current_income*12
 with col6:
-    cpf_contribution = st.number_input("CPF Employer+Employee Contribution", min_value=0, value = 0,on_change=lambda: reset_buttons_cashflow())
-    cpf_contribution = cpf_contribution*12
+    cpf_contribution = st.number_input("CPF Employer+Employee Contribution", min_value=0, value = 2516, on_change=lambda: reset_buttons_cashflow())
+    if is_monthly_income:
+        cpf_contribution = cpf_contribution*12
 
 fire_age = st.number_input("I aim to retire (FIRE) at age...", min_value=0, value=40, help="what retirement means differ for everyone. you may not stop work completely but this checks if you will need to work for money ever again",on_change=lambda: reset_buttons_cashflow())
 
@@ -75,7 +78,7 @@ else:
     my_frs = int(frs_df[frs_df['year']==age_55_year]['FRS'])
 
 st.header("Step 1: How much do I spend on the following mandatory expenses annually?")
-is_monthly = st.toggle("Enter monthly amount")
+is_monthly = st.toggle("Enter monthly amount",key="expense_toggle")
 
 col3, col4 = st.columns(2)
 # Taking range input from the user
