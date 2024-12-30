@@ -7,7 +7,7 @@ import streamlit as st
 from simulation import simulate_age
 import altair as alt
 
-
+st.set_page_config(page_title="Die with Zero")
 st.title("Project 0️⃣")
 st.write(
     """
