@@ -110,6 +110,8 @@ for i in range(st.session_state.custom_expense_count):
             # Each component gets its own "Remove" button
             st.button("Remove", key=f"remove_expense_{i}",on_click=remove_expenses)
 
+years = future_age - current_age + 1
+ages = list(range(current_age, future_age + 1))
 total_mandatory_expenses, cashflow_df, my_bhs, my_frs = project_cashflow(current_age,future_age, current_income, fire_age, is_monthly,living_expenses,insurance,taxes,allowances,mortgage,mortgage_years,custom_expenses_dict,custom_expenses_years_dict)
 
 st.write(f"Your mandatory expenses amounts to `${total_mandatory_expenses:,.0f}` annually.")
@@ -256,10 +258,10 @@ if st.session_state['show_projection']:
                     3. Total Net Inflow is after Expenses and does not include E/E CPF contribution.
                     4. Planned contributions assumed to be invested at the end of the year and do not qualify for interests within the same year.
                     5. Withdrawal rules are in this order: 
-                    - First, CPF OA if after age 55 and sufficient amount
-                    - Second, SRS if after age 62 and for 10 consecutive years (transferred to Short-term Cash for unused amount), 
-                    - Third, by Cash Equities
-                    - Lastly, Short-term Cash and Savings
+                        - First, CPF OA if after age 55 and sufficient amount
+                        - Second, SRS if after age 62 and for 10 consecutive years (transferred to Short-term Cash for unused amount), 
+                        - Third, by Cash Equities
+                        - Lastly, Short-term Cash and Savings
                     6. Custom assets are not added into total portfolio value because I'm not sure how it would affect the withdrawal rules... it is only indicated in the last columns for reference.
                 """)
     withdrawn_from, df, withdrawal_df, max_cpf_df, beginning_cpf_ma, first_bhs_age, first_frs_age, beginning_total, ending_total = simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_short_term_in_cash,current_equities_in_cash,
@@ -328,7 +330,7 @@ if st.session_state['show_projection']:
                     1. Congrats! 🎉 You have enough to drawdown on your portfolio and returns. 
                         - At age {fire_age}, you will have ${beginning_total[fire_age-current_age]:,.0f} in portfolio value. 
                     2. At age {future_age}, you will have ${ending_total[-1]:,.0f} remaining. 
-                        {'- This far exceeds the desired near-zero portfolio value. You could increase your expenses and enjoy more!' if ending_total[-1]>500000 else ''}
+                        - {'This far exceeds the desired near-zero portfolio value. You could increase your expenses and enjoy more!' if ending_total[-1]>500000 else ''}
                     3. {first_bhs_message} 
                         - {bhs_info_message} 
                         - {final_bhs_message}
@@ -341,10 +343,9 @@ if st.session_state['show_projection']:
         insights = f"""
                     What this means...
                     1. You do not have enough to drawdown on your portfolio/returns until age {future_age} or the withdrawal rules of CPF OA and/or SRS does not permit. 
-                    - You will face insufficient funds from age {withdrawn_from.index('INSUFFICIENT')+30}. 
-                    - At age {fire_age}, you will have ${beginning_total[fire_age-current_age]:,.0f} in portfolio value.
+                        - At age {fire_age}, you will have ${beginning_total[fire_age-current_age]:,.0f} in portfolio value but you will face insufficient funds from age {withdrawn_from.index('INSUFFICIENT')+30}.
                     2. At age {future_age}, you will have ${ending_total[-1]:,.0f} remaining.
-                    3. {first_bhs_message}
+                    3. {first_bhs_message} 
                         - {bhs_info_message} 
                         - {final_bhs_message}
                     4. {first_frs_message} 
