@@ -11,9 +11,9 @@ import altair as alt
 st.title("Project 0️⃣")
 st.write(
     """
-    The tool aims to help with the accumulation and decumulation of your portfolio.\n
+    This is a localised Singapore-based tool that aims to help with the accumulation and decumulation of your portfolio, by considering Singapore-specific aspect of your financially planning such as CPF and SRS.\n
     Step 1: By providing your current age, estimated mortality age, current income and expenses, it will generate a cashflow summary for every year from now to your mortality age including years where you have stopped working. This highlights the shortfall you need to make up for in your portfolio returns when you retire.\n
-    Step 2: By providing your current portfolio size and planned contributions, it projects if you could retire based on your current income and expenses, factoring in a fixed growth rate for your assets.
+    Step 2: By providing your current portfolio size and planned contributions, it projects if you could retire based on your current income and expenses, factoring in a fixed growth rate for your assets and withdrawal rules associated with CPF and SRS.
     - If you are able to retire at the age you have specified, this tool would inform you of how much you would have at your mortality age. This aims to encourage you to spend more to achieve the goal of building more memories, ultimately die with zero.
     - If you are unable to retire at the age you have specified, this tool would inform you of the changes you would need to make such as increasing your FIRE age, spending less or earning more.
 
@@ -40,11 +40,19 @@ col1, col2 = st.columns(2)
 # Taking range input from the user
 with col1:
     current_age = st.number_input("Current Age", min_value=0, value=30,on_change=lambda: reset_buttons_cashflow())
-    current_income = st.number_input("Annual Take-home Income", value=100000, help="include base, bonus and exclude employer+employee CPF contribution",on_change=lambda: reset_buttons_cashflow())
 
 with col2:
     future_age = st.number_input("Mortality Age", min_value=current_age + 1, value=95,help="when you expect to stop planning",on_change=lambda: reset_buttons_cashflow())
-    cpf_contribution = st.number_input("Annual CPF Employer+Employee Contribution", min_value=0, value = 0,on_change=lambda: reset_buttons_cashflow())
+
+
+is_monthly_income = st.toggle("Enter monthly amount", value=True)
+col5, col6 = st.columns(2)
+with col5:
+    current_income = st.number_input("Take-home Income", value=100000, help="include base, bonus and exclude employer+employee CPF contribution",on_change=lambda: reset_buttons_cashflow())
+    current_income = current_income*12
+with col6:
+    cpf_contribution = st.number_input("CPF Employer+Employee Contribution", min_value=0, value = 0,on_change=lambda: reset_buttons_cashflow())
+    cpf_contribution = cpf_contribution*12
 
 fire_age = st.number_input("I aim to retire (FIRE) at age...", min_value=0, value=40, help="what retirement means differ for everyone. you may not stop work completely but this checks if you will need to work for money ever again",on_change=lambda: reset_buttons_cashflow())
 
@@ -216,7 +224,7 @@ with st.expander(f"Cash (uninvested in savings account)", expanded=True):
     with cash3:
         cash_top_up = st.number_input("Savings Account Contribution", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
         st.write("*Fixed every year*")
-with st.expander(f"Short-term Investments in Cash", expanded=True): 
+with st.expander(f"Short-term Investments in Cash (e.g. bonds, T-bills)", expanded=True): 
     st1, st2, st3 = st.columns(3)
     with st1:
         current_short_term_in_cash = st.number_input("Current Amount", min_value=0,value=0, key='cash_short_term',on_change=lambda: reset_buttons_projection())
@@ -225,7 +233,7 @@ with st.expander(f"Short-term Investments in Cash", expanded=True):
     with st3:
         short_term_inv = st.number_input("Short-term Contribution", min_value=0, value=0,on_change=lambda: reset_buttons_projection())
         st.write("*Allocated in proportion to the short-term and long-term amounts every year*")
-with st.expander(f"Long-term Equities in Cash", expanded=True): 
+with st.expander(f"Long-term Equities in Cash (e.g. stocks, ETFs)", expanded=True): 
     lt1, lt2, lt3 = st.columns(3)
     with lt1:
         current_equities_in_cash = st.number_input("Current Amount", min_value=0,value=0, key='cash_equities',on_change=lambda: reset_buttons_projection())
@@ -271,7 +279,7 @@ with st.expander(f"CPF OA", expanded=True):
         cpf_oa_growth_rate = st.number_input("Growth Rate (%)",value=2.50, key='cpf_oa_gr',on_change=lambda: reset_buttons_projection())/100+1
     with oa3:
         st.write("No option to top up to OA directly.")
-    
+
 
 custom_assets_amt_dict = {}
 
