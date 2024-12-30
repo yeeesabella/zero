@@ -183,11 +183,18 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
                 withdrawn_from.append('Cash Equities')
                 withdrawals_to_cash_st.append(0)
                 withdrawals_for_taxes.append(0)
-            # 7. Short term Cash otherwise
+            # 7. Short term Cash
             elif beginning_short_term_cash[age-current_age]>-net_inflow[age-current_age]:
                 withdrawals_for_expense.append(-net_inflow[age-current_age])
                 beginning_short_term_cash[age-current_age] = beginning_short_term_cash[age-current_age]-withdrawals_for_expense[age-current_age]
                 withdrawn_from.append('Short-term Cash')
+                withdrawals_to_cash_st.append(0)
+                withdrawals_for_taxes.append(0)
+            # 7. Emergency Cash otherwise
+            elif beginning_cash[age-current_age]>-net_inflow[age-current_age]:
+                withdrawals_for_expense.append(-net_inflow[age-current_age])
+                beginning_cash[age-current_age] = beginning_cash[age-current_age]-withdrawals_for_expense[age-current_age]
+                withdrawn_from.append('Cash')
                 withdrawals_to_cash_st.append(0)
                 withdrawals_for_taxes.append(0)
             else:
