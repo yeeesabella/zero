@@ -67,6 +67,8 @@ else:
     my_frs = int(frs_df[frs_df['year']==age_55_year]['FRS'])
 
 st.header("Step 1: How much do I spend on the following mandatory expenses annually?")
+is_monthly = st.toggle("Enter monthly amount")
+
 col3, col4 = st.columns(2)
 # Taking range input from the user
 with col3:
@@ -76,6 +78,12 @@ with col3:
 with col4:
     taxes = st.number_input("Taxes", min_value=0,value=0,on_change=lambda: reset_buttons_cashflow())
     allowances = st.number_input("Allowances", min_value=0, value=0,on_change=lambda: reset_buttons_cashflow())
+
+if is_monthly:
+    living_expenses = living_expenses*12
+    insurance = insurance*12
+    taxes = taxes*12
+    allowances = allowances*12
 
 custom_expenses_dict = {}
 custom_expenses_years_dict = {}
@@ -99,7 +107,9 @@ for i in range(st.session_state.custom_expense_count):
         col1, col2 = st.columns([4, 1])
         with col1:
             key = st.text_input("Custom Expense Name",key=f"expense_name_{i}",on_change=lambda: reset_buttons_cashflow())
-            amount = st.number_input("Annual Expense Amount",min_value = 0,key=f"expense_amt_{i}",on_change=lambda: reset_buttons_cashflow())
+            amount = st.number_input("Expense Amount",min_value = 0,key=f"expense_amt_{i}",on_change=lambda: reset_buttons_cashflow())
+            if is_monthly:
+                amount = amount*12
             years = st.number_input("Number of Years",min_value = 0,key=f"expense_years_{i}",on_change=lambda: reset_buttons_cashflow())
             custom_expenses_dict[key] = amount
             custom_expenses_years_dict[key] = years-1
@@ -108,7 +118,7 @@ for i in range(st.session_state.custom_expense_count):
             st.button("Remove", key=f"remove_expense_{i}",on_click=remove_expenses)
 
 total_mandatory_expenses = living_expenses+insurance+taxes+allowances+sum(custom_expenses_dict.values())
-st.write(f"Your mandatory expenses amounts to `${total_mandatory_expenses:,.0f}`.")
+st.write(f"Your mandatory expenses amounts to `${total_mandatory_expenses:,.0f}` annually.")
 st.write(f"You have `${(current_income-total_mandatory_expenses):,.0f}` remaining.")
 try:
     st.write(f"Based on these inputs, your investment/saving rate is `{(1-total_mandatory_expenses/current_income)*100:.0f}%`.")
