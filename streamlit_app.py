@@ -7,7 +7,7 @@ import streamlit as st
 from simulation import simulate_age
 import altair as alt
 
-st.set_page_config(page_title="Die with Zero")
+st.set_page_config(page_title="Die with Zero in SG")
 
 st.title("Project 0️⃣")
 st.write(
@@ -409,8 +409,11 @@ if st.session_state['show_projection']:
                     What this means...
                     1. Congrats! 🎉 You have enough to drawdown on your portfolio and returns. At age {fire_age}, you will have ${beginning_total[fire_age-current_age]:,.0f} in portfolio value. 
                     2. At age {future_age}, you will have ${ending_total[-1]:,.0f} remaining. {'This far exceeds the desired near-zero portfolio value. You could increase your expenses and enjoy more!' if ending_total[-1]>500000 else ''}
-                    3. {first_bhs_message} {bhs_info_message} {final_bhs_message}
-                    4. {first_frs_message} {frs_info_message}
+                    3. {first_bhs_message} 
+                        - {bhs_info_message} 
+                        - {final_bhs_message}
+                    4. {first_frs_message} 
+                        - {frs_info_message}
                     """
         st.success(insights, icon="🔥")
         st.line_chart(df_selected)
@@ -420,7 +423,8 @@ if st.session_state['show_projection']:
                     1. You do not have enough to drawdown on your portfolio/returns until age {future_age} or the withdrawal rules of CPF OA and/or SRS does not permit. You will face insufficient funds from age {withdrawn_from.index('INSUFFICIENT')+30}. At age {fire_age}, you will have ${beginning_total[fire_age-current_age]:,.0f} in portfolio value.
                     2. At age {future_age}, you will have ${ending_total[-1]:,.0f} remaining.
                     3. {first_bhs_message}
-                        - {bhs_info_message} {final_bhs_message}
+                        - {bhs_info_message} 
+                        - {final_bhs_message}
                     4. {first_frs_message} 
                         - {frs_info_message}
                     """
