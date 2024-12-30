@@ -85,16 +85,23 @@ col3, col4 = st.columns(2)
 with col3:
     living_expenses = st.number_input("Living expenses", min_value=0, value=0,on_change=lambda: reset_buttons_cashflow())
     insurance = st.number_input("Insurance", min_value=0,value=0,on_change=lambda: reset_buttons_cashflow())
-    # other_expenses = st.number_input("Other mandatory expenses", min_value=0, value=0, help="include any mortgage or debts you are currently making repayments for")
 with col4:
-    taxes = st.number_input("Taxes", min_value=0,value=0,on_change=lambda: reset_buttons_cashflow())
+    taxes = st.number_input("Taxes", min_value=0,value=0,help="applicable only during working years",on_change=lambda: reset_buttons_cashflow())
     allowances = st.number_input("Allowances", min_value=0, value=0,on_change=lambda: reset_buttons_cashflow())
+
+with st.container(border=True):
+    m1, m2 = st.columns(2)
+    with m1:
+        mortgage = st.number_input("Mortgage", min_value=0, value=0,on_change=lambda: reset_buttons_cashflow())
+    with m2:
+        mortgage_years = st.number_input("Remaining Repayment Years",min_value = 0,on_change=lambda: reset_buttons_cashflow())
 
 if is_monthly:
     living_expenses = living_expenses*12
     insurance = insurance*12
     taxes = taxes*12
     allowances = allowances*12
+    mortgage = mortgage*12
 
 custom_expenses_dict = {}
 custom_expenses_years_dict = {}
@@ -128,7 +135,7 @@ for i in range(st.session_state.custom_expense_count):
             # Each component gets its own "Remove" button
             st.button("Remove", key=f"remove_expense_{i}",on_click=remove_expenses)
 
-total_mandatory_expenses = living_expenses+insurance+taxes+allowances+sum(custom_expenses_dict.values())
+total_mandatory_expenses = living_expenses+insurance+taxes+allowances+mortgage+sum(custom_expenses_dict.values())
 st.write(f"Your mandatory expenses amounts to `${total_mandatory_expenses:,.0f}` annually.")
 st.write(f"You have `${(current_income-total_mandatory_expenses):,.0f}` remaining.")
 try:
@@ -146,12 +153,11 @@ ages = list(range(current_age, future_age + 1))
 
 # Calculate expenses adjusted for inflation each year
 total_inflow = [current_income * ((1 + income_rate) ** i) if i <= fire_age-current_age else 0 for i in range(years)]
-total_outflow = [total_mandatory_expenses * ((1 + inflation_rate) ** i) for i in range(years)]
-net_inflow = [a - b for a, b in zip(total_inflow, total_outflow)]
 adj_living_expenses = [living_expenses * ((1 + inflation_rate) ** i) for i in range(years)]
 adj_insurance = [insurance * ((1 + inflation_rate) ** i) for i in range(years)]
 adj_taxes = [taxes * ((1 + inflation_rate) ** i) if i <= fire_age-current_age else 0 for i in range(years)]
 adj_allowances = [allowances * ((1 + inflation_rate) ** i) for i in range(years)]
+adj_mortgage = [mortgage if i <= mortgage_years-1 else 0 for i in range(years)]
 
 def generate_inflation_dataframe(amount_dict, years_dict, num_rows, inflation_rate=inflation_rate):
     """
@@ -183,20 +189,19 @@ def generate_inflation_dataframe(amount_dict, years_dict, num_rows, inflation_ra
     return df
 
 # Create a DataFrame to display the results
-fixed_data = {'Age': ages, 'Total Inflow': total_inflow,
+fixed_data = {'Age': ages, 
+              'Total Inflow': total_inflow,
                 'Living Expenses': adj_living_expenses,
                 'Taxes': adj_taxes,
                 'Insurance': adj_insurance,
-                'Allowances': adj_allowances}
+                'Allowances': adj_allowances,
+                'Mortgage': adj_mortgage}
 custom_data = generate_inflation_dataframe(custom_expenses_dict, custom_expenses_years_dict, years)
 
-total_data = {
-        'Total Outflow': total_outflow,
-        'Net Inflow': net_inflow}
 fixed_df = pd.DataFrame(fixed_data)
-total_df = pd.DataFrame(total_data)
-
-combined_df = pd.concat([fixed_df, custom_data, total_df], axis=1)
+combined_df = pd.concat([fixed_df, custom_data], axis=1)
+combined_df["Total Outflow"] = combined_df.drop(columns=['Age','Total Inflow']).sum(axis=1)
+combined_df["Net Inflow"] = combined_df["Total Inflow"] - combined_df["Total Outflow"]
 combined_df = combined_df.set_index("Age")
 
 if st.button("Generate Cashflow Summary"):
