@@ -199,10 +199,11 @@ fixed_data = {'Age': ages,
 custom_data = generate_inflation_dataframe(custom_expenses_dict, custom_expenses_years_dict, years)
 
 fixed_df = pd.DataFrame(fixed_data)
-combined_df = pd.concat([fixed_df, custom_data], axis=1)
-combined_df["Total Outflow"] = combined_df.drop(columns=['Age','Total Inflow']).sum(axis=1)
-combined_df["Net Inflow"] = combined_df["Total Inflow"] - combined_df["Total Outflow"]
-combined_df = combined_df.set_index("Age")
+cashflow_df = pd.concat([fixed_df, custom_data], axis=1)
+cashflow_df["Total Outflow"] = cashflow_df.drop(columns=['Age','Total Inflow']).sum(axis=1)
+cashflow_df["Net Inflow"] = cashflow_df["Total Inflow"] - cashflow_df["Total Outflow"]
+cashflow_df = cashflow_df.set_index("Age")
+# st.write(list(cashflow_df["Net Inflow"]))
 
 if st.button("Generate Cashflow Summary"):
     st.session_state['show_cashflow'] = True
@@ -217,8 +218,8 @@ if st.session_state['show_cashflow']:
                     Note: -ve net inflow means that it needs to be compensated by portfolio returns/interests/drawdown.
                 """)
     pd.set_option('display.precision', 0)
-    combined_df = combined_df.round(0)
-    st.dataframe(combined_df)
+    cashflow_df = cashflow_df.round(0)
+    st.dataframe(cashflow_df)
 
 st.header("Step 2: My current portfolio and how much do I plan to contribute to each bucket while I am working?")
 st.write(f"Remember: after your expenses indicated above, you have `${(current_income-total_mandatory_expenses):,.0f}` remaining. You should plan to allocate them into one or more of these buckets.")
@@ -348,7 +349,7 @@ if st.session_state['show_projection']:
                  cpf_allocation_by_age_df,cash_growth_rate,cash_short_term_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
                  cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,
                  srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,cash_top_up,cpf_ma_top_up,
-                 current_income,income_rate,total_mandatory_expenses,inflation_rate)
+                 current_income,income_rate,list(cashflow_df["Total Outflow"]),inflation_rate)
 
     tab1, tab2, tab3 = st.tabs(["Table", "Chart", "Appendix"])
     with tab1:
@@ -418,8 +419,10 @@ if st.session_state['show_projection']:
                     What this means...
                     1. You do not have enough to drawdown on your portfolio/returns until age {future_age} or the withdrawal rules of CPF OA and/or SRS does not permit. You will face insufficient funds from age {withdrawn_from.index('INSUFFICIENT')+30}. At age {fire_age}, you will have ${beginning_total[fire_age-current_age]:,.0f} in portfolio value.
                     2. At age {future_age}, you will have ${ending_total[-1]:,.0f} remaining.
-                    3. {first_bhs_message} {bhs_info_message} {final_bhs_message}
-                    4. {first_frs_message} {frs_info_message}
+                    3. {first_bhs_message}
+                        - {bhs_info_message} {final_bhs_message}
+                    4. {first_frs_message} 
+                        - {frs_info_message}
                     """
         st.warning(insights, icon="⚠️")
         
@@ -429,18 +432,19 @@ if st.session_state['show_projection']:
                  current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs,my_frs,cpf_contribution,
                  cpf_allocation_by_age_df,cash_growth_rate,cash_short_term_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
                  cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,cash_top_up,cpf_ma_top_up,
-                 current_income,income_rate,total_mandatory_expenses,inflation_rate)
+                 current_income,income_rate,list(cashflow_df["Total Outflow"]),inflation_rate)
 
             if 'INSUFFICIENT' not in ideal_age_withdrawn_from: # means can fire!
                 ideal_age = age
                 break
         for expense in range(total_mandatory_expenses,0,-1000):
             ideal_expense = 0
+            ideal_list_expense = [expense * ((1 + inflation_rate) ** i) for i in range(years)]
             ideal_expense_withdrawn_from, ideal_expense_df, ideal_expense_withdrawal_df, ideal_expense_max_cpf_df, ideal_expense_beginning_cpf_ma, ideal_expense_first_bhs_age, ideal_expense_first_frs_age, ideal_expense_beginning_total, ideal_expense_ending_total = simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_short_term_in_cash,current_equities_in_cash,
                  current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs,my_frs,cpf_contribution,
                  cpf_allocation_by_age_df,cash_growth_rate,cash_short_term_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
                  cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,cash_top_up,cpf_ma_top_up,
-                 current_income,income_rate,expense,inflation_rate)
+                 current_income,income_rate,ideal_list_expense,inflation_rate)
 
             if 'INSUFFICIENT' not in ideal_expense_withdrawn_from: # means can fire!
                 ideal_expense = expense
@@ -451,7 +455,7 @@ if st.session_state['show_projection']:
                  current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs,my_frs,cpf_contribution,
                  cpf_allocation_by_age_df,cash_growth_rate,cash_short_term_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
                  cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,cash_top_up,cpf_ma_top_up,
-                 income,income_rate,total_mandatory_expenses,inflation_rate)
+                 income,income_rate,list(cashflow_df["Total Outflow"]),inflation_rate)
 
             if 'INSUFFICIENT' not in ideal_income_withdrawn_from: # means can fire!
                 ideal_income = income
@@ -499,7 +503,7 @@ if st.session_state['show_projection']:
         ideal_income_df_selected['Projection Type'] = '3. Increasing Income'
 
         # Concatenate DataFrames
-        combined_df = pd.concat(
+        cashflow_df = pd.concat(
             [withdrawal_df_selected, ideal_age_df_selected, ideal_expense_df_selected, ideal_income_df_selected],
             axis=0
         ).reset_index()
@@ -508,7 +512,7 @@ if st.session_state['show_projection']:
                 range=['#EEE3CB', '#00A19D', '#FFB344', '#E05D5D']  # Custom color codes
                     )
         # Base line chart with color-encoded legend
-        line_chart = alt.Chart(combined_df).mark_line().encode(
+        line_chart = alt.Chart(cashflow_df).mark_line().encode(
             x='Year/Age',
             y='Total Portfolio Value',
             color=alt.Color('Projection Type:N', scale=color_scale), # Legend will be based on this column

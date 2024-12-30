@@ -7,10 +7,10 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
                  cpf_allocation_by_age_df,cash_growth_rate,cash_short_term_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
                  cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,
                  srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,cash_top_up,cpf_ma_top_up,
-                 current_income,income_rate,total_mandatory_expenses,inflation_rate):
+                 current_income,income_rate,total_outflow,inflation_rate):
     
     total_inflow = [current_income * ((1 + income_rate) ** i) if i <= fire_age-current_age else 0 for i in range(years)]
-    total_outflow = [total_mandatory_expenses * ((1 + inflation_rate) ** i) for i in range(years)]
+    # total_outflow = [total_mandatory_expenses * ((1 + inflation_rate) ** i) for i in range(years)]
     net_inflow = [a - b for a, b in zip(total_inflow, total_outflow)]
     proportion_st_lt = short_term_inv/(short_term_inv+long_term_inv)
     contribute_cpf_oa_emp, contribute_cpf_sa_emp, contribute_cpf_ma_emp = [], [], []
