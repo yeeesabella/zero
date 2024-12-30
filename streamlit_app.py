@@ -1,11 +1,12 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sot import bhs_df, frs_df, cpf_allocation_by_age_df, calculate_pre_tax,calculate_tax
 from datetime import datetime
-import streamlit as st
-from simulation import simulate_age
 import altair as alt
+
+from sot import bhs_df, frs_df, cpf_allocation_by_age_df, calculate_pre_tax,calculate_tax
+from cashflow import project_cashflow, income_rate, inflation_rate, current_year
+from simulation import simulate_age
 
 st.set_page_config(page_title="Die with Zero in SG")
 
@@ -41,10 +42,8 @@ col1, col2 = st.columns(2)
 # Taking range input from the user
 with col1:
     current_age = st.number_input("Current Age", min_value=0, value=30,on_change=lambda: reset_buttons_cashflow())
-
 with col2:
     future_age = st.number_input("Mortality Age", min_value=current_age + 1, value=95,help="when you expect to stop planning",on_change=lambda: reset_buttons_cashflow())
-
 
 is_monthly_income = st.toggle("Enter monthly amount",key="income_toggle")
 col5, col6 = st.columns(2)
@@ -53,35 +52,16 @@ with col5:
     if is_monthly_income:
         current_income = current_income*12
 with col6:
-    cpf_contribution = st.number_input("CPF Employer+Employee Contribution", min_value=0, value = 2516, on_change=lambda: reset_buttons_cashflow())
+    cpf_contribution = st.number_input("CPF Employer+Employee Contribution", min_value=0, value = 0, on_change=lambda: reset_buttons_cashflow())
     if is_monthly_income:
         cpf_contribution = cpf_contribution*12
 
 fire_age = st.number_input("I aim to retire (FIRE) at age...", min_value=0, value=40, help="what retirement means differ for everyone. you may not stop work completely but this checks if you will need to work for money ever again",on_change=lambda: reset_buttons_cashflow())
 
-# generate bhs, frs table based on current age
-# projected bhs 5%, frs 3.5%
-if current_age<65:
-    current_year = datetime.now().year
-    my_bhs = int(bhs_df[bhs_df['year']==current_year]['BHS'])
-else: 
-    current_year = datetime.now().year
-    age_65_year = current_year - current_age + 65
-    my_bhs = int(bhs_df[bhs_df['year']==age_65_year]['BHS'])
-
-if current_age<55:
-    current_year = datetime.now().year
-    my_frs = int(frs_df[frs_df['year']==current_year]['FRS'])
-else: 
-    current_year = datetime.now().year
-    age_55_year = current_year - current_age + 55
-    my_frs = int(frs_df[frs_df['year']==age_55_year]['FRS'])
-
 st.header("Step 1: How much do I spend on the following mandatory expenses annually?")
 is_monthly = st.toggle("Enter monthly amount",key="expense_toggle")
 
 col3, col4 = st.columns(2)
-# Taking range input from the user
 with col3:
     living_expenses = st.number_input("Living expenses", min_value=0, value=0,on_change=lambda: reset_buttons_cashflow())
     insurance = st.number_input("Insurance", min_value=0,value=0,on_change=lambda: reset_buttons_cashflow())
@@ -96,15 +76,6 @@ with st.container(border=True):
     with m2:
         mortgage_years = st.number_input("Remaining Repayment Years",min_value = 0,on_change=lambda: reset_buttons_cashflow())
 
-if is_monthly:
-    living_expenses = living_expenses*12
-    insurance = insurance*12
-    taxes = taxes*12
-    allowances = allowances*12
-    mortgage = mortgage*12
-
-custom_expenses_dict = {}
-custom_expenses_years_dict = {}
 
 if "custom_expense_count" not in st.session_state:
     st.session_state.custom_expense_count = 0
@@ -119,6 +90,9 @@ def remove_expenses():
 # Button to add a new component
 st.button("Add custom expenses", on_click=add_expenses)
 
+custom_expenses_dict = {}
+custom_expenses_years_dict = {}
+
 # Display dynamic components with remove buttons
 for i in range(st.session_state.custom_expense_count):
     with st.expander(f"Custom Expense {i}", expanded=True):
@@ -126,84 +100,24 @@ for i in range(st.session_state.custom_expense_count):
         with col1:
             key = st.text_input("Custom Expense Name",key=f"expense_name_{i}",on_change=lambda: reset_buttons_cashflow())
             amount = st.number_input("Expense Amount",min_value = 0,key=f"expense_amt_{i}",on_change=lambda: reset_buttons_cashflow())
+            years = st.number_input("Number of Years",min_value = 0,key=f"expense_years_{i}",on_change=lambda: reset_buttons_cashflow())
+
             if is_monthly:
                 amount = amount*12
-            years = st.number_input("Number of Years",min_value = 0,key=f"expense_years_{i}",on_change=lambda: reset_buttons_cashflow())
             custom_expenses_dict[key] = amount
             custom_expenses_years_dict[key] = years-1
         with col2:
             # Each component gets its own "Remove" button
             st.button("Remove", key=f"remove_expense_{i}",on_click=remove_expenses)
 
-total_mandatory_expenses = living_expenses+insurance+taxes+allowances+mortgage+sum(custom_expenses_dict.values())
+total_mandatory_expenses, cashflow_df, my_bhs, my_frs = project_cashflow(current_age,future_age, current_income, fire_age, is_monthly,living_expenses,insurance,taxes,allowances,mortgage,mortgage_years,custom_expenses_dict,custom_expenses_years_dict)
+
 st.write(f"Your mandatory expenses amounts to `${total_mandatory_expenses:,.0f}` annually.")
 st.write(f"You have `${(current_income-total_mandatory_expenses):,.0f}` remaining.")
 try:
     st.write(f"Based on these inputs, your investment/saving rate is `{(1-total_mandatory_expenses/current_income)*100:.0f}%`.")
 except ZeroDivisionError:
     st.write("")
-
-# Constants
-inflation_rate = 0.03
-income_rate = 0.03
-
-# Calculate number of years to project
-years = future_age - current_age + 1
-ages = list(range(current_age, future_age + 1))
-
-# Calculate expenses adjusted for inflation each year
-total_inflow = [current_income * ((1 + income_rate) ** i) if i <= fire_age-current_age else 0 for i in range(years)]
-adj_living_expenses = [living_expenses * ((1 + inflation_rate) ** i) for i in range(years)]
-adj_insurance = [insurance * ((1 + inflation_rate) ** i) for i in range(years)]
-adj_taxes = [taxes * ((1 + inflation_rate) ** i) if i <= fire_age-current_age else 0 for i in range(years)]
-adj_allowances = [allowances * ((1 + inflation_rate) ** i) for i in range(years)]
-adj_mortgage = [mortgage if i <= mortgage_years-1 else 0 for i in range(years)]
-
-def generate_inflation_dataframe(amount_dict, years_dict, num_rows, inflation_rate=inflation_rate):
-    """
-    Generate a DataFrame with amounts compounded by inflation over the years for each key.
-
-    Parameters:
-    amount_dict (dict): Dictionary with keys as item names and values as initial amounts.
-    years_dict (dict): Dictionary with keys as item names and values as years to apply inflation.
-    num_rows (int): Number of rows (years) to generate in the DataFrame.
-    inflation_rate (float): Annual inflation rate (default is 3%).
-
-    Returns:
-    pd.DataFrame: DataFrame with keys as columns, showing compounded amounts per year.
-    """
-    data = {}
-    
-    for key in amount_dict:
-        amounts = []
-        for year in range(num_rows):
-            if year <= years_dict[key]:  # Apply inflation within the specified number of years.
-                amount = amount_dict[key] * ((1 + inflation_rate) ** year)
-            else:  # Set to 0 after the specified years.
-                amount = 0
-            amounts.append(round(amount, 2))
-        data[key] = amounts
-
-    # Create DataFrame with only the item columns.
-    df = pd.DataFrame(data)
-    return df
-
-# Create a DataFrame to display the results
-fixed_data = {'Age': ages, 
-              'Total Inflow': total_inflow,
-                'Living Expenses': adj_living_expenses,
-                'Taxes': adj_taxes,
-                'Insurance': adj_insurance,
-                'Allowances': adj_allowances,
-                'Mortgage': adj_mortgage}
-custom_data = generate_inflation_dataframe(custom_expenses_dict, custom_expenses_years_dict, years)
-
-fixed_df = pd.DataFrame(fixed_data)
-cashflow_df = pd.concat([fixed_df, custom_data], axis=1)
-cashflow_df["Total Outflow"] = cashflow_df.drop(columns=['Age','Total Inflow']).sum(axis=1)
-cashflow_df["Net Inflow"] = cashflow_df["Total Inflow"] - cashflow_df["Total Outflow"]
-cashflow_df = cashflow_df.set_index("Age")
-# st.write(list(cashflow_df["Net Inflow"]))
 
 if st.button("Generate Cashflow Summary"):
     st.session_state['show_cashflow'] = True
@@ -341,11 +255,15 @@ if st.session_state['show_projection']:
                     2. Inflation increases at 3% p.a. for all expenses.
                     3. Total Net Inflow is after Expenses and does not include E/E CPF contribution.
                     4. Planned contributions assumed to be invested at the end of the year and do not qualify for interests within the same year.
-                    5. Withdrawal rules are in this order: first, CPF OA if after age 55 and sufficient amount, second, SRS if after age 62 and for 10 consecutive years (transferred to Short-term Cash for unused amount), followed by Cash Equities then Short-term Cash.
+                    5. Withdrawal rules are in this order: 
+                    - First, CPF OA if after age 55 and sufficient amount
+                    - Second, SRS if after age 62 and for 10 consecutive years (transferred to Short-term Cash for unused amount), 
+                    - Third, by Cash Equities
+                    - Lastly, Short-term Cash and Savings
                     6. Custom assets are not added into total portfolio value because I'm not sure how it would affect the withdrawal rules... it is only indicated in the last columns for reference.
                 """)
     withdrawn_from, df, withdrawal_df, max_cpf_df, beginning_cpf_ma, first_bhs_age, first_frs_age, beginning_total, ending_total = simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_short_term_in_cash,current_equities_in_cash,
-                 current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs,my_frs,cpf_contribution,
+                 current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs, my_frs,cpf_contribution,
                  cpf_allocation_by_age_df,cash_growth_rate,cash_short_term_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
                  cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,
                  srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,cash_top_up,cpf_ma_top_up,
@@ -407,8 +325,10 @@ if st.session_state['show_projection']:
     if 'INSUFFICIENT' not in withdrawn_from: # can fire
         insights = f"""
                     What this means...
-                    1. Congrats! 🎉 You have enough to drawdown on your portfolio and returns. At age {fire_age}, you will have ${beginning_total[fire_age-current_age]:,.0f} in portfolio value. 
-                    2. At age {future_age}, you will have ${ending_total[-1]:,.0f} remaining. {'This far exceeds the desired near-zero portfolio value. You could increase your expenses and enjoy more!' if ending_total[-1]>500000 else ''}
+                    1. Congrats! 🎉 You have enough to drawdown on your portfolio and returns. 
+                        - At age {fire_age}, you will have ${beginning_total[fire_age-current_age]:,.0f} in portfolio value. 
+                    2. At age {future_age}, you will have ${ending_total[-1]:,.0f} remaining. 
+                        {'- This far exceeds the desired near-zero portfolio value. You could increase your expenses and enjoy more!' if ending_total[-1]>500000 else ''}
                     3. {first_bhs_message} 
                         - {bhs_info_message} 
                         - {final_bhs_message}
@@ -420,7 +340,9 @@ if st.session_state['show_projection']:
     else: 
         insights = f"""
                     What this means...
-                    1. You do not have enough to drawdown on your portfolio/returns until age {future_age} or the withdrawal rules of CPF OA and/or SRS does not permit. You will face insufficient funds from age {withdrawn_from.index('INSUFFICIENT')+30}. At age {fire_age}, you will have ${beginning_total[fire_age-current_age]:,.0f} in portfolio value.
+                    1. You do not have enough to drawdown on your portfolio/returns until age {future_age} or the withdrawal rules of CPF OA and/or SRS does not permit. 
+                    - You will face insufficient funds from age {withdrawn_from.index('INSUFFICIENT')+30}. 
+                    - At age {fire_age}, you will have ${beginning_total[fire_age-current_age]:,.0f} in portfolio value.
                     2. At age {future_age}, you will have ${ending_total[-1]:,.0f} remaining.
                     3. {first_bhs_message}
                         - {bhs_info_message} 
