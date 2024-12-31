@@ -15,8 +15,11 @@ st.write(
     """
     This is a Singapore-based tool that aims to help with the accumulation and decumulation of your portfolio, by considering Singapore-specific aspect of your financially planning such as CPF and SRS.\n
     Step 1: By providing your current age, estimated mortality age, current income and expenses, it will generate a cashflow summary for every year from now to your mortality age including years where you have stopped working. This highlights the shortfall you need to make up for in your portfolio returns when you retire.\n
-    Step 2: By providing your current portfolio size and planned contributions, it projects if you could retire based on your current income and expenses, factoring in a fixed growth rate for your assets and withdrawal rules associated with CPF and SRS.
-    - If you are able to retire at the age you have specified, this tool would inform you of how much you would have at your mortality age. This aims to encourage you to spend more to achieve the goal of building more memories, ultimately die with zero.
+    Step 2: By providing your current portfolio size and planned contributions, it projects if you could retire based on your current income and expenses, factoring in a fixed growth rate for your assets and withdrawal rules associated with CPF and SRS.\n
+    - A full year by year breakdown of beginning and ending portfolio value, withdrawals, returns will be provided. \n
+    Step 3: Take action! 
+    - If you are able to retire at the age you have specified, this tool would inform you of how much you would have at your mortality age.
+        - [WIP] Suggested plans of increasing your expenses during early years will help you achieve the goal of building more memories and ultimately, die with zero.
     - If you are unable to retire at the age you have specified, this tool would inform you of the changes you would need to make such as increasing your FIRE age, spending less or earning more.
 
     Hope this helps! ♡
@@ -258,12 +261,13 @@ if st.session_state['show_projection']:
                     2. Inflation increases at 3% p.a. for all expenses.
                     3. Total Net Inflow is after Expenses and does not include E/E CPF contribution.
                     4. Planned contributions assumed to be invested at the end of the year and do not qualify for interests within the same year.
-                    5. Withdrawal rules are in this order: 
+                    5. CPF Life is assumed to be under Standard Plan, starting payout at age 65, estimated for a male member. 
+                    6. Withdrawal amount is after CPF life is taken into account. Withdrawal rules are in this order: 
                         - First, CPF OA if after age 55 and sufficient amount
                         - Second, SRS if after age 62 and for 10 consecutive years (transferred to Short-term Cash for unused amount), 
                         - Third, by Cash Equities
                         - Lastly, Short-term Cash and Savings
-                    6. Custom assets are not added into total portfolio value because I'm not sure how it would affect the withdrawal rules... it is only indicated in the last columns for reference.
+                    7. Custom assets are not added into total portfolio value because I'm not sure how it would affect the withdrawal rules... it is only indicated in the last columns for reference.
                 """)
     withdrawn_from, df, withdrawal_df, max_cpf_df, first_bhs_age, first_frs_age, beginning_total, beginning_cpf_sa, beginning_cpf_ma = simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_short_term_in_cash,current_equities_in_cash,
                  current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,cpf_contribution,
@@ -302,8 +306,6 @@ if st.session_state['show_projection']:
         st.subheader("CPF Allocation Rates by Age")
         st.dataframe(cpf_allocation_by_age_df.drop(columns=['Start Age','End Age']))
         
-    # todo: improve insights here. unlike to retire, to say at what age it will run out
-    # todo: suggest increasing the age? or just run with other ages to see what is the suitable fire age.
     try:
         index = beginning_cpf_ma.index(int(max_cpf_df.loc[65]['BHS']))
         first_bhs_message = f'You will first achieve the Basic Healthcare Sum (BHS) at the beginning of age {min(first_bhs_age)}.'
@@ -359,6 +361,7 @@ if st.session_state['show_projection']:
                         - {frs_info_message}
                     """
         st.warning(insights, icon="⚠️")
+
         
         for age in range(fire_age,future_age):
             ideal_age = 0
@@ -404,6 +407,8 @@ if st.session_state['show_projection']:
                         3. Increasing your income from `${current_income:,.0f}` now to `${ideal_income:,.0f}` (keeping your retirement age and expenses constant). \n
                         You may find the projection figures for each of these 3 options below. 
                         """
+
+        st.header("Step 3: How can I improve my plan?")
         st.info(suggestions, icon="💡")
         tab4, tab5, tab6 = st.tabs(["Option 1", "Option 2", "Option 3"])
         with tab4:
