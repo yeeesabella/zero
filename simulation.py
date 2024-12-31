@@ -137,15 +137,7 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
         contribute_lt_inv = [(a-b-c-d-e)*(1-proportion_st_lt) if a-b-c-d-e>0 else 0 for a, b, c, d, e in zip(net_inflow, contribute_srs_top_up, contribute_cpf_sa_top_up,contribute_cpf_ma_top_up,contribute_cash_top_up)]
         contribute_st_inv = [(a-b-c-d-e)*proportion_st_lt if a-b-c-d-e>0 else 0 for a, b, c, d, e in zip(net_inflow, contribute_srs_top_up, contribute_cpf_sa_top_up,contribute_cpf_ma_top_up,contribute_cash_top_up)]
 
-        # Generate portfolio returns
-        returns_cash.append(beginning_cash[-1]*cash_growth_rate-beginning_cash[-1])
-        returns_short_term_cash.append(beginning_short_term_cash[-1]*cash_short_term_growth_rate-beginning_short_term_cash[-1])
-        returns_equities_cash.append(beginning_equities_cash[-1]*cash_equities_growth_rate-beginning_equities_cash[-1])
-        returns_equities_srs.append(beginning_equities_srs[-1]*srs_equities_growth_rate-beginning_equities_srs[-1])
-        returns_cpf_oa.append(beginning_cpf_oa[-1]*cpf_oa_growth_rate-beginning_cpf_oa[-1])
-        returns_cpf_sa.append(beginning_cpf_sa[-1]*cpf_sa_growth_rate-beginning_cpf_sa[-1])
-        returns_cpf_ma.append(beginning_cpf_ma[-1]*cpf_ma_growth_rate-beginning_cpf_ma[-1])
-        returns_total.append(returns_cash[-1]+returns_equities_cash[-1]+returns_equities_srs[-1]+returns_cpf_oa[-1]+returns_cpf_sa[-1]+returns_cpf_ma[-1])
+        
         
         # generate cpf life payout
         if age>=65:
@@ -194,7 +186,7 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
                     beginning_short_term_cash[age-current_age] = beginning_short_term_cash[age-current_age]-withdrawals_for_taxes[age-current_age]
                 else:
                     beginning_cash[age-current_age] = beginning_cash[age-current_age]-withdrawals_for_taxes[age-current_age]
-                beginning_equities_srs[age-current_age] = beginning_equities_srs[age-current_age] - withdrawals_for_expense[age-current_age] - withdrawals_for_taxes[age-current_age]
+                beginning_equities_srs[age-current_age] = beginning_equities_srs[age-current_age] - withdrawals_for_expense[age-current_age]
                 withdrawn_from.append('SRS')
             # 3. last srs withdrawal insufficient -> withdraw all + mix other source
             elif age>=62 and srs_withdrawal_count>0 and beginning_equities_srs[age-current_age]<(withdraw_after_cpf_life[age-current_age]) and beginning_equities_srs[age-current_age]>0:
@@ -291,6 +283,15 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
         
         ending_total.append(ending_cash[-1]+ending_short_term_cash[-1]+ending_equities_cash[-1]+ending_equities_srs[-1]+ending_cpf_oa[-1]+ending_cpf_sa[-1]+ending_cpf_ma[-1])
     
+        # Generate portfolio returns
+        returns_cash.append(beginning_cash[-1]*cash_growth_rate-beginning_cash[-1])
+        returns_short_term_cash.append(beginning_short_term_cash[-1]*cash_short_term_growth_rate-beginning_short_term_cash[-1])
+        returns_equities_cash.append(beginning_equities_cash[-1]*cash_equities_growth_rate-beginning_equities_cash[-1])
+        returns_equities_srs.append(beginning_equities_srs[-1]*srs_equities_growth_rate-beginning_equities_srs[-1])
+        returns_cpf_oa.append(beginning_cpf_oa[-1]*cpf_oa_growth_rate-beginning_cpf_oa[-1])
+        returns_cpf_sa.append(beginning_cpf_sa[-1]*cpf_sa_growth_rate-beginning_cpf_sa[-1])
+        returns_cpf_ma.append(beginning_cpf_ma[-1]*cpf_ma_growth_rate-beginning_cpf_ma[-1])
+        returns_total.append(returns_cash[-1]+returns_equities_cash[-1]+returns_equities_srs[-1]+returns_cpf_oa[-1]+returns_cpf_sa[-1]+returns_cpf_ma[-1])
     
     # Create a DataFrame to display the results
     withdrawal_data = {'Age': ages,
