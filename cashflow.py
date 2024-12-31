@@ -3,15 +3,15 @@ import numpy as np
 from datetime import datetime
 
 
-from sot import bhs_df, frs_df, cpf_allocation_by_age_df, calculate_pre_tax,calculate_tax
+from sot import bhs_df, frs_df
 
 # Constants
 inflation_rate = 0.03
 income_rate = 0.03
 current_year = datetime.now().year
 
-def project_cashflow(current_age,future_age, current_income, fire_age, is_monthly,living_expenses,insurance,taxes,allowances,mortgage,mortgage_years,custom_expenses_dict,custom_expenses_years_dict):
 
+def generate_my_bhs_frs(current_age):
     # generate bhs, frs table based on current age
     # projected bhs 5%, frs 3.5%
     if current_age<65:
@@ -21,11 +21,25 @@ def project_cashflow(current_age,future_age, current_income, fire_age, is_monthl
         my_bhs = int(bhs_df[bhs_df['year']==age_65_year]['BHS'])
 
     if current_age<55:
+        my_brs = int(frs_df[frs_df['year']==current_year]['BRS'])
+        my_brs_payout = int(frs_df[frs_df['year']==current_year]['BRS Payout'])
         my_frs = int(frs_df[frs_df['year']==current_year]['FRS'])
+        my_frs_payout = int(frs_df[frs_df['year']==current_year]['FRS Payout'])
+        my_ers = int(frs_df[frs_df['year']==current_year]['ERS'])
+        my_ers_payout = int(frs_df[frs_df['year']==current_year]['ERS Payout'])
     else: 
         age_55_year = current_year - current_age + 55
+        my_brs = int(frs_df[frs_df['year']==age_55_year]['BRS'])
+        my_brs_payout = int(frs_df[frs_df['year']==age_55_year]['BRS Payout'])
         my_frs = int(frs_df[frs_df['year']==age_55_year]['FRS'])
+        my_frs_payout = int(frs_df[frs_df['year']==age_55_year]['FRS Payout'])
+        my_ers = int(frs_df[frs_df['year']==age_55_year]['ERS'])
+        my_ers_payout = int(frs_df[frs_df['year']==age_55_year]['ERS Payout'])
 
+    return my_bhs, my_brs, my_brs_payout, my_frs, my_frs_payout, my_ers, my_ers_payout
+
+
+def project_cashflow(current_age,future_age, current_income, fire_age, is_monthly,living_expenses,insurance,taxes,allowances,mortgage,mortgage_years,custom_expenses_dict,custom_expenses_years_dict):
 
     if is_monthly:
         living_expenses = living_expenses*12
@@ -93,4 +107,4 @@ def project_cashflow(current_age,future_age, current_income, fire_age, is_monthl
     cashflow_df["Net Inflow"] = cashflow_df["Total Inflow"] - cashflow_df["Total Outflow"]
     cashflow_df = cashflow_df.set_index("Age")
 
-    return total_mandatory_expenses, cashflow_df, my_bhs, my_frs
+    return total_mandatory_expenses, cashflow_df

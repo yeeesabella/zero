@@ -4,8 +4,8 @@ import numpy as np
 from datetime import datetime
 import altair as alt
 
-from sot import bhs_df, frs_df, cpf_allocation_by_age_df, calculate_pre_tax,calculate_tax
-from cashflow import project_cashflow, income_rate, inflation_rate, current_year
+from sot import bhs_df, frs_df, cpf_allocation_by_age_df
+from cashflow import project_cashflow, income_rate, inflation_rate, current_year,generate_my_bhs_frs
 from simulation import simulate_age
 
 st.set_page_config(page_title="Die with Zero in SG")
@@ -112,7 +112,8 @@ for i in range(st.session_state.custom_expense_count):
 
 years = future_age - current_age + 1
 ages = list(range(current_age, future_age + 1))
-total_mandatory_expenses, cashflow_df, my_bhs, my_frs = project_cashflow(current_age,future_age, current_income, fire_age, is_monthly,living_expenses,insurance,taxes,allowances,mortgage,mortgage_years,custom_expenses_dict,custom_expenses_years_dict)
+total_mandatory_expenses, cashflow_df = project_cashflow(current_age,future_age, current_income, fire_age, is_monthly,living_expenses,insurance,taxes,allowances,mortgage,mortgage_years,custom_expenses_dict,custom_expenses_years_dict)
+my_bhs, my_brs, my_brs_payout, my_frs, my_frs_payout, my_ers, my_ers_payout = generate_my_bhs_frs(current_age)
 
 st.write(f"Your mandatory expenses amounts to `${total_mandatory_expenses:,.0f}` annually.")
 st.write(f"You have `${(current_income-total_mandatory_expenses):,.0f}` remaining.")
@@ -264,14 +265,15 @@ if st.session_state['show_projection']:
                         - Lastly, Short-term Cash and Savings
                     6. Custom assets are not added into total portfolio value because I'm not sure how it would affect the withdrawal rules... it is only indicated in the last columns for reference.
                 """)
-    withdrawn_from, df, withdrawal_df, max_cpf_df, beginning_cpf_ma, first_bhs_age, first_frs_age, beginning_total, ending_total = simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_short_term_in_cash,current_equities_in_cash,
-                 current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs, my_frs,cpf_contribution,
+    withdrawn_from, df, withdrawal_df, max_cpf_df, first_bhs_age, first_frs_age, beginning_total, beginning_cpf_sa, beginning_cpf_ma = simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_short_term_in_cash,current_equities_in_cash,
+                 current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,cpf_contribution,
                  cpf_allocation_by_age_df,cash_growth_rate,cash_short_term_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
                  cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,
                  srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,cash_top_up,cpf_ma_top_up,
-                 current_income,income_rate,list(cashflow_df["Total Outflow"]),inflation_rate)
+                 current_income,income_rate,list(cashflow_df["Total Outflow"]),inflation_rate,
+                 my_bhs, my_brs, my_brs_payout, my_frs, my_frs_payout, my_ers, my_ers_payout)
 
-    tab1, tab2, tab3 = st.tabs(["Table", "Chart", "Appendix"])
+    tab1, tab2, tab3 = st.tabs(["Table", "Chart", "References"])
     with tab1:
         st.dataframe(df)
     with tab2:
@@ -288,15 +290,16 @@ if st.session_state['show_projection']:
         max_cpf_df = max_cpf_df.set_index("Age")
         st.dataframe(max_cpf_df)
 
-        st.subheader("[Reference] Past Basic Healthcare Sum (BHS)")
+        st.subheader("Past Basic Healthcare Sum (BHS)")
         st.write("BHS is fixed at age 65. Future BHS amount are projected at 5%.")
         st.dataframe(bhs_df)
 
-        st.subheader("[Reference] Past Full Retirement Sum (FRS)")
-        st.write("FRS is fixed at age 55. Note: 2016 FRS takes 2015 numbers. Future FRS amount are projected at 3.5%.")
+        st.subheader("Past Full Retirement Sum (FRS)")
+        st.write("FRS is fixed at age 55. Note: 2016 FRS takes 2015 numbers. Future FRS amount are projected at 3.5%, which increases payouts by 2.9% to 3.2% based on historical records.")
+        st.link_button("Source of CPF Life Payouts", "https://www.mof.gov.sg/docs/librariesprovider3/budget2022/download/pdf/annexe3.pdf")
         st.dataframe(frs_df)
 
-        st.subheader("[Reference] CPF Allocation Rates by Age")
+        st.subheader("CPF Allocation Rates by Age")
         st.dataframe(cpf_allocation_by_age_df.drop(columns=['Start Age','End Age']))
         
     # todo: improve insights here. unlike to retire, to say at what age it will run out
@@ -329,8 +332,10 @@ if st.session_state['show_projection']:
                     What this means...
                     1. Congrats! 🎉 You have enough to drawdown on your portfolio and returns. 
                         - At age {fire_age}, you will have ${beginning_total[fire_age-current_age]:,.0f} in portfolio value. 
-                    2. At age {future_age}, you will have ${ending_total[-1]:,.0f} remaining. 
-                        - {'This far exceeds the desired near-zero portfolio value. You could increase your expenses and enjoy more!' if ending_total[-1]>500000 else ''}
+                        - Excluding MA and SA, you will have ${beginning_total[fire_age-current_age]-beginning_cpf_ma[fire_age-current_age]-beginning_cpf_sa[fire_age-current_age]:,.0f}.
+                    2. At age {future_age}, you will have ${beginning_total[-1]:,.0f} remaining. 
+                        - Excluding MA and SA, you will have ${beginning_total[-1]-beginning_cpf_ma[-1]-beginning_cpf_sa[-1]:,.0f}.
+                        - {'This far exceeds the desired near-zero portfolio value. You could increase your expenses and enjoy more!' if beginning_total[-1]>500000 else ''}
                     3. {first_bhs_message} 
                         - {bhs_info_message} 
                         - {final_bhs_message}
@@ -344,7 +349,9 @@ if st.session_state['show_projection']:
                     What this means...
                     1. You do not have enough to drawdown on your portfolio/returns until age {future_age} or the withdrawal rules of CPF OA and/or SRS does not permit. 
                         - At age {fire_age}, you will have ${beginning_total[fire_age-current_age]:,.0f} in portfolio value but you will face insufficient funds from age {withdrawn_from.index('INSUFFICIENT')+30}.
-                    2. At age {future_age}, you will have ${ending_total[-1]:,.0f} remaining.
+                        - Excluding MA and SA, you will have ${beginning_total[fire_age-current_age]-beginning_cpf_ma[fire_age-current_age]-beginning_cpf_sa[fire_age-current_age]:,.0f}.
+                    2. At age {future_age}, you will have ${beginning_total[-1]:,.0f} remaining. 
+                        - Excluding MA and SA, you will have ${beginning_total[-1]-beginning_cpf_ma[-1]-beginning_cpf_sa[-1]:,.0f}.
                     3. {first_bhs_message} 
                         - {bhs_info_message} 
                         - {final_bhs_message}
@@ -355,11 +362,12 @@ if st.session_state['show_projection']:
         
         for age in range(fire_age,future_age):
             ideal_age = 0
-            ideal_age_withdrawn_from, ideal_age_df, ideal_age_withdrawal_df, ideal_age_max_cpf_df, ideal_age_beginning_cpf_ma, ideal_age_first_bhs_age, ideal_age_first_frs_age, ideal_age_beginning_total, ideal_age_ending_total = simulate_age(current_age,age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_short_term_in_cash,current_equities_in_cash,
-                 current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs,my_frs,cpf_contribution,
+            ideal_age_withdrawn_from, ideal_age_df, ideal_age_withdrawal_df, ideal_age_max_cpf_df, ideal_age_first_bhs_age, ideal_age_first_frs_age, ideal_age_beginning_total, ideal_age_beginning_cpf_sa, ideal_age_beginning_cpf_ma = simulate_age(current_age,age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_short_term_in_cash,current_equities_in_cash,
+                 current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,cpf_contribution,
                  cpf_allocation_by_age_df,cash_growth_rate,cash_short_term_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
                  cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,cash_top_up,cpf_ma_top_up,
-                 current_income,income_rate,list(cashflow_df["Total Outflow"]),inflation_rate)
+                 current_income,income_rate,list(cashflow_df["Total Outflow"]),inflation_rate,
+                 my_bhs, my_brs, my_brs_payout, my_frs, my_frs_payout, my_ers, my_ers_payout)
 
             if 'INSUFFICIENT' not in ideal_age_withdrawn_from: # means can fire!
                 ideal_age = age
@@ -367,22 +375,24 @@ if st.session_state['show_projection']:
         for expense in range(total_mandatory_expenses,0,-1000):
             ideal_expense = 0
             ideal_list_expense = [expense * ((1 + inflation_rate) ** i) for i in range(years)]
-            ideal_expense_withdrawn_from, ideal_expense_df, ideal_expense_withdrawal_df, ideal_expense_max_cpf_df, ideal_expense_beginning_cpf_ma, ideal_expense_first_bhs_age, ideal_expense_first_frs_age, ideal_expense_beginning_total, ideal_expense_ending_total = simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_short_term_in_cash,current_equities_in_cash,
-                 current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs,my_frs,cpf_contribution,
+            ideal_expense_withdrawn_from, ideal_expense_df, ideal_expense_withdrawal_df, ideal_expense_max_cpf_df, ideal_expense_first_bhs_age, ideal_expense_first_frs_age, ideal_expense_beginning_total, ideal_expense_beginning_cpf_sa, ideal_expense_beginning_cpf_ma = simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_short_term_in_cash,current_equities_in_cash,
+                 current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,cpf_contribution,
                  cpf_allocation_by_age_df,cash_growth_rate,cash_short_term_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
                  cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,cash_top_up,cpf_ma_top_up,
-                 current_income,income_rate,ideal_list_expense,inflation_rate)
+                 current_income,income_rate,ideal_list_expense,inflation_rate,
+                 my_bhs, my_brs, my_brs_payout, my_frs, my_frs_payout, my_ers, my_ers_payout)
 
             if 'INSUFFICIENT' not in ideal_expense_withdrawn_from: # means can fire!
                 ideal_expense = expense
                 break
         for income in range(current_income,9999999999, 1000):
             ideal_income = 0
-            ideal_income_withdrawn_from, ideal_income_df, ideal_income_withdrawal_df, ideal_income_max_cpf_df, ideal_income_beginning_cpf_ma, ideal_income_first_bhs_age, ideal_income_first_frs_age, ideal_income_beginning_total, ideal_income_ending_total = simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_short_term_in_cash,current_equities_in_cash,
-                 current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs,my_frs,cpf_contribution,
+            ideal_income_withdrawn_from, ideal_income_df, ideal_income_withdrawal_df, ideal_income_max_cpf_df, ideal_income_first_bhs_age, ideal_income_first_frs_age, ideal_income_beginning_total, ideal_income_beginning_cpf_sa, ideal_income_beginning_cpf_ma = simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_short_term_in_cash,current_equities_in_cash,
+                 current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,cpf_contribution,
                  cpf_allocation_by_age_df,cash_growth_rate,cash_short_term_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
                  cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,cash_top_up,cpf_ma_top_up,
-                 income,income_rate,list(cashflow_df["Total Outflow"]),inflation_rate)
+                 income,income_rate,list(cashflow_df["Total Outflow"]),inflation_rate,
+                 my_bhs, my_brs, my_brs_payout, my_frs, my_frs_payout, my_ers, my_ers_payout)
 
             if 'INSUFFICIENT' not in ideal_income_withdrawn_from: # means can fire!
                 ideal_income = income

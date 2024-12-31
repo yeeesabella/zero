@@ -1,13 +1,14 @@
 import pandas as pd
 import numpy as np
-from sot import calculate_tax, calculate_pre_tax
+from sot import calculate_tax
 
 def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,current_year,current_cash,current_short_term_in_cash,current_equities_in_cash,
-                 current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,my_bhs,my_frs,cpf_contribution,
+                 current_equities_in_srs,current_cpf_oa,current_cpf_sa,current_cpf_ma,cpf_contribution,
                  cpf_allocation_by_age_df,cash_growth_rate,cash_short_term_growth_rate,cash_equities_growth_rate,srs_equities_growth_rate,
                  cpf_oa_growth_rate,cpf_sa_growth_rate,cpf_ma_growth_rate,
                  srs_top_up,long_term_inv,short_term_inv,cpf_sa_top_up,cash_top_up,cpf_ma_top_up,
-                 current_income,income_rate,total_outflow,inflation_rate):
+                 current_income,income_rate,total_outflow,inflation_rate,
+                 my_bhs, my_brs, my_brs_payout, my_frs, my_frs_payout, my_ers, my_ers_payout):
     
     total_inflow = [current_income * ((1 + income_rate) ** i) if i <= fire_age-current_age else 0 for i in range(years)]
     # total_outflow = [total_mandatory_expenses * ((1 + inflation_rate) ** i) for i in range(years)]
@@ -27,11 +28,13 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
         for key, value in custom_assets_amt_dict.items():
             globals()['ending_'+key] = []
 
-    withdrawals_for_expense, withdrawals_for_taxes, withdrawals_to_cash_st, withdrawn_from, withdrawal_rate = [], [], [], [], []
+    cpf_life_payouts, withdrawals_for_expense, withdrawals_for_taxes, withdrawals_to_cash_st, withdrawn_from, withdrawal_rate = [], [], [], [], [], []
     max_bhs = []
-    max_frs = []
+    max_brs,max_frs,max_ers = [],[],[]
+    max_brs_payout,max_brs_payout,max_brs_payout = [],[],[]
     first_bhs_age,first_frs_age = [], []
 
+    withdraw_after_cpf_life = []
     srs_withdrawal_count = 10
 
     for age in range(current_age, future_age + 1):
@@ -48,7 +51,12 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
             beginning_cpf_ma = [current_cpf_ma]
             beginning_total = [current_cash+current_equities_in_cash+current_equities_in_srs+current_cpf_oa+current_cpf_sa+current_cpf_ma]
             max_bhs = [my_bhs]
+            max_brs = [round(my_frs/2,-2)]
             max_frs = [my_frs]
+            max_ers = [round(my_frs/2*3,-2)]
+            max_brs_payout = [my_brs_payout]
+            max_frs_payout = [my_frs_payout]
+            max_ers_payout = [my_ers_payout]
             if len(custom_assets_amt_dict)>0:
                 for key, value in custom_assets_amt_dict.items():
                     globals()['beginning_'+key] = [value[0]]
@@ -64,14 +72,26 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
             beginning_cpf_sa.append(ending_cpf_sa[-1])
             beginning_cpf_ma.append(ending_cpf_ma[-1])
             beginning_total.append(ending_total[-1])
+            # get bhs
             if age <= 65 : 
                 max_bhs.append(round(my_bhs*pow(1.05,age-current_age),-2))
             else:
                 max_bhs.append(max_bhs[-1])
+            # get retirement sums and payout
             if age <= 55:                
+                max_brs.append(round(my_frs*pow(1.035,age-current_age)/2,-2))
                 max_frs.append(round(my_frs*pow(1.035,age-current_age),-2))
+                max_ers.append(round(my_frs*pow(1.035,age-current_age)/2*3,-2))
+                max_brs_payout.append(round(my_brs_payout*pow(1.03,age-current_age),-1))
+                max_frs_payout.append(round(my_frs_payout*pow(1.03,age-current_age),-1))
+                max_ers_payout.append(round(my_ers_payout*pow(1.03,age-current_age),-1))
             else:
+                max_brs.append(max_brs[-1])
                 max_frs.append(max_frs[-1])
+                max_ers.append(max_ers[-1])
+                max_brs_payout.append(max_brs_payout[-1])
+                max_frs_payout.append(max_frs_payout[-1])
+                max_ers_payout.append(max_ers_payout[-1])
             if len(custom_assets_amt_dict)>0:
                 for key, value in custom_assets_amt_dict.items():
                     globals()['beginning_'+key].append(globals()['ending_'+key][-1])
@@ -91,7 +111,7 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
             srs_top_up = 0
             cash_top_up = 0
         
-        # exceeds frs
+        # no more top up if exceeds frs
         if beginning_cpf_sa[-1]>=max_frs[-1] or age>fire_age:
             contribute_cpf_sa_top_up.append(0)
         else:
@@ -100,7 +120,7 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
             else:
                 contribute_cpf_sa_top_up.append(cpf_sa_top_up)
 
-        # exceeds bhs
+        # no more top up if exceeds bhs
         if beginning_cpf_ma[-1]>=max_bhs[-1] or age>fire_age:
             contribute_cpf_ma_top_up.append(0)
         else:
@@ -127,33 +147,48 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
         returns_cpf_ma.append(beginning_cpf_ma[-1]*cpf_ma_growth_rate-beginning_cpf_ma[-1])
         returns_total.append(returns_cash[-1]+returns_equities_cash[-1]+returns_equities_srs[-1]+returns_cpf_oa[-1]+returns_cpf_sa[-1]+returns_cpf_ma[-1])
         
+        # generate cpf life payout
+        if age>=65:
+            if beginning_cpf_sa[-1]==max_frs[-1]:
+                cpf_life_payouts.append(max_frs_payout[-1])
+            elif beginning_cpf_sa[-1]==max_ers[-1]:
+                cpf_life_payouts.append(max_ers_payout[-1])
+            else:
+                cpf_life_payouts.append(max_brs_payout[-1])
+            withdraw_after_cpf_life.append(-net_inflow[age-current_age]-cpf_life_payouts[age-current_age]*12)
+        else:
+            cpf_life_payouts.append(0)
+            withdraw_after_cpf_life.append(-net_inflow[age-current_age]-cpf_life_payouts[age-current_age]*12)
+            
+
         # Generate withdrawals, with rules
+
         if net_inflow[age-current_age]<0:
             # 1. CPF OA after age 55 and sufficient amount
-            if age>=55 and beginning_cpf_oa[age-current_age]>-2*net_inflow[age-current_age] and 'SRS' not in withdrawn_from[-1]:
-                withdrawals_for_expense.append(-net_inflow[age-current_age])
+            if age>=55 and beginning_cpf_oa[age-current_age]>2*withdraw_after_cpf_life[age-current_age] and 'SRS' not in withdrawn_from[-1]:
+                withdrawals_for_expense.append(withdraw_after_cpf_life[age-current_age])
                 beginning_cpf_oa[age-current_age] = beginning_cpf_oa[age-current_age]-withdrawals_for_expense[age-current_age]
                 withdrawn_from.append(f'CPF OA')
                 withdrawals_to_cash_st.append(0)
                 withdrawals_for_taxes.append(0)
             # 2. SRS after age 62, withdraw for 10 times only, what's unused goes into short term cash, pre-tax exceeds amount /10
-            elif age>=62 and srs_withdrawal_count>0 and beginning_equities_srs[age-current_age]/srs_withdrawal_count>=(-net_inflow[age-current_age]) and beginning_equities_srs[age-current_age]>0:
+            elif age>=62 and srs_withdrawal_count>0 and beginning_equities_srs[age-current_age]/srs_withdrawal_count>=(withdraw_after_cpf_life[age-current_age]) and beginning_equities_srs[age-current_age]>0:
                 # withdraw proportionate to the number of times left, in excess of what's needed
-                withdrawals_for_expense.append(-net_inflow[age-current_age])
+                withdrawals_for_expense.append(withdraw_after_cpf_life[age-current_age])
                 withdrawals_to_cash_st.append(beginning_equities_srs[age-current_age]/srs_withdrawal_count-withdrawals_for_expense[age-current_age])
                 # add to cash and withdraw for taxes
-                withdrawals_for_taxes.append(calculate_tax(-net_inflow[age-current_age]))
+                withdrawals_for_taxes.append(calculate_tax(withdraw_after_cpf_life[age-current_age]))
                 beginning_short_term_cash[age-current_age] = beginning_short_term_cash[age-current_age]+(beginning_equities_srs[age-current_age]/srs_withdrawal_count-withdrawals_for_expense[age-current_age])-withdrawals_for_taxes[age-current_age]
                 beginning_equities_srs[age-current_age] = beginning_equities_srs[age-current_age]-(beginning_equities_srs[age-current_age]/srs_withdrawal_count)
                 srs_withdrawal_count -= 1
                 withdrawn_from.append('SRS')
             # 4. 2nd last SRS withdrawal or SRS enough for withdrawal and taxes but insufficient to divide proportionally
-            elif age>=62 and srs_withdrawal_count>0 and beginning_equities_srs[age-current_age]/srs_withdrawal_count<(-net_inflow[age-current_age]) and beginning_equities_srs[age-current_age]>(-net_inflow[age-current_age]) and beginning_equities_srs[age-current_age]>0:
+            elif age>=62 and srs_withdrawal_count>0 and beginning_equities_srs[age-current_age]/srs_withdrawal_count<(withdraw_after_cpf_life[age-current_age]) and beginning_equities_srs[age-current_age]>(withdraw_after_cpf_life[age-current_age]) and beginning_equities_srs[age-current_age]>0:
                 # withdraw just enough
-                withdrawals_for_expense.append(-net_inflow[age-current_age])
+                withdrawals_for_expense.append(withdraw_after_cpf_life[age-current_age])
                 srs_withdrawal_count-=1
                 withdrawals_to_cash_st.append(0)
-                withdrawals_for_taxes.append(calculate_tax(-net_inflow[age-current_age]))
+                withdrawals_for_taxes.append(calculate_tax(withdraw_after_cpf_life[age-current_age]))
                 # withdraw for taxes
                 if beginning_short_term_cash[age-current_age]>withdrawals_for_taxes[age-current_age]:
                     beginning_short_term_cash[age-current_age] = beginning_short_term_cash[age-current_age]-withdrawals_for_taxes[age-current_age]
@@ -162,37 +197,37 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
                 beginning_equities_srs[age-current_age] = beginning_equities_srs[age-current_age] - withdrawals_for_expense[age-current_age] - withdrawals_for_taxes[age-current_age]
                 withdrawn_from.append('SRS')
             # 3. last srs withdrawal insufficient -> withdraw all + mix other source
-            elif age>=62 and srs_withdrawal_count>0 and beginning_equities_srs[age-current_age]<(-net_inflow[age-current_age]) and beginning_equities_srs[age-current_age]>0:
+            elif age>=62 and srs_withdrawal_count>0 and beginning_equities_srs[age-current_age]<(withdraw_after_cpf_life[age-current_age]) and beginning_equities_srs[age-current_age]>0:
                 # withdraw insufficient
-                withdrawals_for_expense.append(-net_inflow[age-current_age])
+                withdrawals_for_expense.append(withdraw_after_cpf_life[age-current_age])
                 withdrawals_for_taxes.append(calculate_tax(beginning_equities_srs[age-current_age]))
                 srs_withdrawal_count-=1
                 withdrawals_to_cash_st.append(0)
                 # withdraw for shortfall and taxes
-                if beginning_equities_cash[age-current_age]>(-net_inflow[age-current_age]-beginning_equities_srs[age-current_age])-withdrawals_for_taxes[age-current_age]:
-                    beginning_equities_cash[age-current_age] = beginning_equities_cash[age-current_age]-(-net_inflow[age-current_age]-beginning_equities_srs[age-current_age])-withdrawals_for_taxes[age-current_age]
+                if beginning_equities_cash[age-current_age]>(withdraw_after_cpf_life[age-current_age]-beginning_equities_srs[age-current_age])-withdrawals_for_taxes[age-current_age]:
+                    beginning_equities_cash[age-current_age] = beginning_equities_cash[age-current_age]-(withdraw_after_cpf_life[age-current_age]-beginning_equities_srs[age-current_age])-withdrawals_for_taxes[age-current_age]
                     withdrawn_from.append('SRS, Cash Equities')
                 else:
                     beginning_cash[age-current_age] = beginning_cash[age-current_age]-withdrawals_for_taxes[age-current_age]-(withdrawals_for_expense[age-current_age]-beginning_equities_srs[age-current_age])
                     withdrawn_from.append('SRS, Cash')
                 beginning_equities_srs[age-current_age] = 0
             # 6. Equities Cash
-            elif beginning_equities_cash[age-current_age]>-net_inflow[age-current_age]:
-                withdrawals_for_expense.append(-net_inflow[age-current_age])
+            elif beginning_equities_cash[age-current_age]>withdraw_after_cpf_life[age-current_age]:
+                withdrawals_for_expense.append(withdraw_after_cpf_life[age-current_age])
                 beginning_equities_cash[age-current_age] = beginning_equities_cash[age-current_age]-withdrawals_for_expense[age-current_age]
                 withdrawn_from.append('Cash Equities')
                 withdrawals_to_cash_st.append(0)
                 withdrawals_for_taxes.append(0)
             # 7. Short term Cash
-            elif beginning_short_term_cash[age-current_age]>-net_inflow[age-current_age]:
-                withdrawals_for_expense.append(-net_inflow[age-current_age])
+            elif beginning_short_term_cash[age-current_age]>withdraw_after_cpf_life[age-current_age]:
+                withdrawals_for_expense.append(withdraw_after_cpf_life[age-current_age])
                 beginning_short_term_cash[age-current_age] = beginning_short_term_cash[age-current_age]-withdrawals_for_expense[age-current_age]
                 withdrawn_from.append('Short-term Cash')
                 withdrawals_to_cash_st.append(0)
                 withdrawals_for_taxes.append(0)
             # 7. Emergency Cash otherwise
-            elif beginning_cash[age-current_age]>-net_inflow[age-current_age]:
-                withdrawals_for_expense.append(-net_inflow[age-current_age])
+            elif beginning_cash[age-current_age]>withdraw_after_cpf_life[age-current_age]:
+                withdrawals_for_expense.append(withdraw_after_cpf_life[age-current_age])
                 beginning_cash[age-current_age] = beginning_cash[age-current_age]-withdrawals_for_expense[age-current_age]
                 withdrawn_from.append('Cash')
                 withdrawals_to_cash_st.append(0)
@@ -223,12 +258,16 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
         # base case: MA limit overflow to SA then OA, regardless of SA limit before age 55
         if beginning_cpf_ma[-1]*cpf_ma_growth_rate+contribute_cpf_ma_emp[-1]+contribute_cpf_ma_top_up[-1]<max_bhs[-1]: # less than bhs
             ending_cpf_ma.append(beginning_cpf_ma[-1]*cpf_ma_growth_rate+contribute_cpf_ma_emp[-1]+contribute_cpf_ma_top_up[-1])
-            if age<55 or beginning_cpf_sa[-1]*cpf_sa_growth_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]<max_frs[-1]: # below 55 or below frs, continue as usual
+            if age<55 or beginning_cpf_sa[-1]*cpf_sa_growth_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]<max_frs[-1]:# below 55 or below frs, continue as usual
                 ending_cpf_sa.append(beginning_cpf_sa[-1]*cpf_sa_growth_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1])
                 ending_cpf_oa.append(beginning_cpf_oa[-1]*cpf_oa_growth_rate+contribute_cpf_oa_emp[-1])
             else: # above 55 and frs hit, ma not hit yet
-                ending_cpf_sa.append(max_frs[-1]) # takes frs value at 55, transferred to oa
-                transfer_sa_to_oa = beginning_cpf_sa[-1]*cpf_sa_growth_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]-max_frs[-1]
+                if beginning_cpf_sa[-1]*cpf_sa_growth_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]>=max_ers[-1]: # enough for ers
+                    ending_cpf_sa.append(max_ers[-1]) # takes ers value at 55, transferred to oa
+                    transfer_sa_to_oa = beginning_cpf_sa[-1]*cpf_sa_growth_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]-max_ers[-1]
+                else: # not enough for ers, only frs
+                    ending_cpf_sa.append(max_frs[-1]) # takes frs value at 55, transferred to oa
+                    transfer_sa_to_oa = beginning_cpf_sa[-1]*cpf_sa_growth_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]-max_frs[-1]
                 ending_cpf_oa.append(transfer_sa_to_oa+beginning_cpf_oa[-1]*cpf_oa_growth_rate+contribute_cpf_oa_emp[-1])
         else: # exceeds bhs
             ending_cpf_ma.append(max_bhs[-1])
@@ -237,8 +276,12 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
                 ending_cpf_sa.append((beginning_cpf_ma[-1]*cpf_ma_growth_rate+contribute_cpf_ma_emp[-1]+contribute_cpf_ma_top_up[-1]-max_bhs[-1])+beginning_cpf_sa[-1]*cpf_sa_growth_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1])
                 ending_cpf_oa.append(beginning_cpf_oa[-1]*cpf_oa_growth_rate+contribute_cpf_oa_emp[-1])
             else: # >=55 and frs hit, ma contribute to oa
-                ending_cpf_sa.append(max_frs[-1]) # takes frs value at 55, transferred to oa
-                transfer_sa_to_oa = beginning_cpf_sa[-1]*cpf_sa_growth_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]-max_frs[-1]
+                if beginning_cpf_sa[-1]*cpf_sa_growth_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]>=max_ers[-1]:
+                    ending_cpf_sa.append(max_ers[-1]) # takes ers value at 55, transferred to oa
+                    transfer_sa_to_oa = beginning_cpf_sa[-1]*cpf_sa_growth_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]-max_ers[-1]
+                else:
+                    ending_cpf_sa.append(max_frs[-1]) # takes frs value at 55, transferred to oa
+                    transfer_sa_to_oa = beginning_cpf_sa[-1]*cpf_sa_growth_rate+contribute_cpf_sa_emp[-1]+contribute_cpf_sa_top_up[-1]-max_frs[-1]
                 transfer_ma_to_oa = beginning_cpf_ma[-1]*cpf_ma_growth_rate+contribute_cpf_ma_emp[-1]+contribute_cpf_ma_top_up[-1]-max_bhs[-1]
                 ending_cpf_oa.append(transfer_sa_to_oa+transfer_ma_to_oa+beginning_cpf_oa[-1]*cpf_oa_growth_rate+contribute_cpf_oa_emp[-1])
         
@@ -260,7 +303,12 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
 
     max_cpf = {'Age': ages, 
                'BHS': max_bhs,
+               'BRS': max_brs,
                'FRS': max_frs,
+               'ERS': max_ers,
+               'BRS Payout': max_brs_payout,
+               'FRS Payout': max_frs_payout,
+               'ERS Payout': max_ers_payout
     }
     max_cpf_df = pd.DataFrame(max_cpf)
     if len(custom_assets_amt_dict)>0:
@@ -281,6 +329,7 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
             'For Expenses': withdrawals_for_expense,
             'For Taxes': withdrawals_for_taxes,
             'Add to Short-term Cash': withdrawals_to_cash_st,
+            'CPF Life': [x*12 for x in cpf_life_payouts],
             'Withdrawn from': withdrawn_from,
             'E/E CPF OA': contribute_cpf_oa_emp,
             'E/E CPF SA': contribute_cpf_sa_emp,
@@ -314,13 +363,13 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
         df = pd.concat([df, custom_beginning, custom_ending], axis=1)
 
     columns_with_beginning = pd.MultiIndex.from_product([["Beginning Balances"], df.columns[1:9]])
-    columns_with_withdrawals = pd.MultiIndex.from_product([["Withdrawals"], df.columns[9:13]])
-    columns_with_mandatory = pd.MultiIndex.from_product([["Mandatory Contributions"], df.columns[13:16]])
-    columns_with_contributions = pd.MultiIndex.from_product([["Planned Contributions"], df.columns[16:23]])
-    columns_with_returns = pd.MultiIndex.from_product([["Portfolio Returns"], df.columns[23:31]])
-    columns_with_ending = pd.MultiIndex.from_product([["Ending Balances"], df.columns[31:39]])
+    columns_with_withdrawals = pd.MultiIndex.from_product([["Withdrawals"], df.columns[9:14]])
+    columns_with_mandatory = pd.MultiIndex.from_product([["Mandatory Contributions"], df.columns[14:17]])
+    columns_with_contributions = pd.MultiIndex.from_product([["Planned Contributions"], df.columns[17:24]])
+    columns_with_returns = pd.MultiIndex.from_product([["Portfolio Returns"], df.columns[24:32]])
+    columns_with_ending = pd.MultiIndex.from_product([["Ending Balances"], df.columns[32:40]])
     if len(custom_assets_amt_dict)>0:
-        columns_with_custom = pd.MultiIndex.from_product([["Custom Assets"], df.columns[39:]])
+        columns_with_custom = pd.MultiIndex.from_product([["Custom Assets"], df.columns[40:]])
         df.columns = pd.MultiIndex.from_tuples([("","Year/Age")] + list(columns_with_beginning)+list(columns_with_withdrawals)+list(columns_with_mandatory)+list(columns_with_contributions)+list(columns_with_returns)+list(columns_with_ending)+list(columns_with_custom))
     else:
         df.columns = pd.MultiIndex.from_tuples([("","Year/Age")] + list(columns_with_beginning)+list(columns_with_withdrawals)+list(columns_with_mandatory)+list(columns_with_contributions)+list(columns_with_returns)+list(columns_with_ending))
@@ -343,5 +392,5 @@ def simulate_age(current_age,fire_age,future_age,years,custom_assets_amt_dict,cu
     df = df.set_index([("","Year/Age")])
     df.index.name = "Year/Age"
 
-    return withdrawn_from, df, withdrawal_df, max_cpf_df, beginning_cpf_ma, first_bhs_age, first_frs_age, beginning_total, ending_total
+    return withdrawn_from, df, withdrawal_df, max_cpf_df, first_bhs_age, first_frs_age, beginning_total, beginning_cpf_sa, beginning_cpf_ma
 
