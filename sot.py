@@ -5,8 +5,8 @@ from datetime import datetime
 
 # BHS fixed at age 65
 # generate BHS table
-current_year = 2024
-years = list(range(current_year-8, current_year + 2))
+current_year = datetime.now().year
+years = list(range(current_year-9, current_year + 1))
 known_bhs = [49800, 52000, 54500, 57200, 60000, 63000, 66000, 68500, 71500, 75500]
 
 data = {'year': years,
